@@ -58,6 +58,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
           <RadixToast.Root
             key={toast.id}
             duration={AUTO_DISMISS_MS}
+            type={toast.variant === "error" ? "foreground" : "background"}
             onOpenChange={(open) => {
               if (!open) removeToast(toast.id);
             }}

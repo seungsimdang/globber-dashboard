@@ -48,6 +48,7 @@ const toFormValues = (city: City): FormValues => ({
 const COUNTRY_CODE_PATTERN = /^[A-Za-z]{2}$/;
 const NOT_FOUND_MESSAGE = "대상을 찾을 수 없습니다.";
 const DUPLICATE_MESSAGE = "이미 등록된 도시입니다.";
+const NAME_MAX_LENGTH = 100;
 
 /** design-spec.md §4 필드별 유효성 검사 규칙. 제출 시점에 전체 필드를 한 번에 검사한다. */
 const validate = (values: FormValues): FieldErrors => {
@@ -55,10 +56,14 @@ const validate = (values: FormValues): FieldErrors => {
 
   if (!values.cityName.trim()) {
     errors.cityName = "도시명을 입력해주세요";
+  } else if (values.cityName.trim().length > NAME_MAX_LENGTH) {
+    errors.cityName = `도시명은 ${NAME_MAX_LENGTH}자 이하여야 합니다`;
   }
 
   if (!values.countryName.trim()) {
     errors.countryName = "국가명을 입력해주세요";
+  } else if (values.countryName.trim().length > NAME_MAX_LENGTH) {
+    errors.countryName = `국가명은 ${NAME_MAX_LENGTH}자 이하여야 합니다`;
   }
 
   if (!COUNTRY_CODE_PATTERN.test(values.countryCode.trim())) {
@@ -113,11 +118,17 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
   const handleChange =
     (field: keyof FormValues) => (event: ChangeEvent<HTMLInputElement>) => {
       const nextValue = event.target.value;
-      setValues((current) => ({ ...current, [field]: nextValue }));
+      const nextValues = { ...values, [field]: nextValue };
+      setValues(nextValues);
       setErrors((current) => {
         if (!current[field]) return current;
+        const fieldError = validate(nextValues)[field];
         const next = { ...current };
-        delete next[field];
+        if (fieldError) {
+          next[field] = fieldError;
+        } else {
+          delete next[field];
+        }
         return next;
       });
     };
@@ -209,6 +220,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
             value={values.cityName}
             onChange={handleChange("cityName")}
             onBlur={handleBlur("cityName")}
+            maxLength={NAME_MAX_LENGTH}
             hasError={Boolean(errors.cityName) || isDuplicateError}
             aria-describedby={errors.cityName ? "cityName-error" : undefined}
           />
@@ -228,6 +240,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
             value={values.countryName}
             onChange={handleChange("countryName")}
             onBlur={handleBlur("countryName")}
+            maxLength={NAME_MAX_LENGTH}
             hasError={Boolean(errors.countryName) || isDuplicateError}
             aria-describedby={errors.countryName ? "countryName-error" : undefined}
           />

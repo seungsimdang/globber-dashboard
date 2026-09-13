@@ -49,7 +49,10 @@ export const SearchInput = ({ onSearch }: SearchInputProps) => {
           <button
             type="button"
             aria-label="검색어 지우기"
-            onClick={() => setValue("")}
+            onClick={() => {
+              setValue("");
+              onSearch("");
+            }}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
           >
             <X className="h-4 w-4" aria-hidden="true" />

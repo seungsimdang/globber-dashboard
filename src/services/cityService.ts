@@ -28,6 +28,7 @@ const LATITUDE_MAX = 90;
 const LONGITUDE_MIN = -180;
 const LONGITUDE_MAX = 180;
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/;
+const NAME_MAX_LENGTH = 100;
 
 type CityInputFields = {
   cityName: string;
@@ -54,13 +55,24 @@ const hasMissingRequiredField = (input: CityInputFields): boolean => {
     return true;
   }
 
-  return lat === undefined || lat === null || lng === undefined || lng === null || Number.isNaN(lat) || Number.isNaN(lng);
+  return (
+    lat === undefined ||
+    lat === null ||
+    lng === undefined ||
+    lng === null ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  );
 };
 
 /** 도시 추가/수정 공통 입력 검증. 실패 시 api-spec.md §3.2 표의 메시지로 Error를 throw한다. */
 const validateCityInput = (input: CityInputFields): void => {
   if (hasMissingRequiredField(input)) {
     throw new Error("필수 항목을 모두 입력해주세요.");
+  }
+
+  if (input.cityName.trim().length > NAME_MAX_LENGTH || input.countryName.trim().length > NAME_MAX_LENGTH) {
+    throw new Error(`도시명과 국가명은 ${NAME_MAX_LENGTH}자 이하여야 합니다.`);
   }
 
   if (input.lat < LATITUDE_MIN || input.lat > LATITUDE_MAX) {
