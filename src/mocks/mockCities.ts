@@ -115,3 +115,13 @@ export const deleteMockCity = (cityId: number): CityApiData | undefined => {
 
   return { ...removed };
 };
+
+/**
+ * 테스트 전용 리셋 유틸리티. 모듈 스코프 저장소(`cities`, `nextCityId`)를 초기 시드 데이터로
+ * 되돌린다. 이 저장소가 모든 호출 간에 공유되므로(module-scope 배열), 테스트 간 격리를 위해
+ * 각 테스트 전에 호출한다. 프로덕션 코드 경로에서는 참조되지 않는다.
+ */
+export const __resetMockCitiesForTest = (): void => {
+  cities = initialCities.map((city) => ({ ...city }));
+  nextCityId = initialCities.length + 1;
+};
