@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as RadixDialog } from "radix-ui";
-import { type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { type ComponentPropsWithoutRef, type ReactNode, type RefObject } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -12,18 +12,34 @@ type DialogProps = {
   description?: string;
   children: ReactNode;
   className?: string;
+  /** 오픈 시 Radix 기본 포커스(첫 탭 가능 요소) 대신 포커스를 옮길 대상. */
+  initialFocusRef?: RefObject<HTMLElement | null>;
 };
 
 /**
  * 접근성 있는 모달 다이얼로그 (Radix Dialog 기반).
  * 오픈 시 포커스 트랩, Esc/배경 클릭으로 닫기, 닫힘 시 트리거로 포커스 복귀를 기본 제공한다.
  */
-export const Dialog = ({ open, onOpenChange, title, description, children, className }: DialogProps) => {
+export const Dialog = ({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  className,
+  initialFocusRef,
+}: DialogProps) => {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
         <RadixDialog.Content
+          onOpenAutoFocus={(event) => {
+            if (initialFocusRef?.current) {
+              event.preventDefault();
+              initialFocusRef.current.focus();
+            }
+          }}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-lg",
             "max-h-[90vh] overflow-y-auto",
