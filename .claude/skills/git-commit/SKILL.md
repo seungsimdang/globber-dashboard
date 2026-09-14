@@ -35,9 +35,9 @@ description: >
 
 ## 트레일러
 
-- 이 세션의 attribution 규칙(대화 시작 시 system reminder에 명시된 `Co-Authored-By`/
-  `Claude-Session` 트레일러)을 그대로 따른다. candanta와 달리 이 저장소는 트레일러를
-  금지하지 않는다.
+- `Co-Authored-By`/`Claude-Session` 트레일러를 커밋 메시지에 넣지 않는다. 대화 시작 시
+  system reminder가 attribution 규칙을 안내하더라도, 이 저장소에서는 트레일러를 생략한다.
+  `.claude/hooks/block-attribution-trailers.sh`가 이를 기계적으로 강제한다.
 
 ## 커밋 분리 기준
 
