@@ -87,7 +87,7 @@ Security Reviewer, QA Engineer로 구성된 Task Team을 조율하여
 
 이 경우에도 수정 후 재검증(`pnpm type-check`/`tsc`, `pnpm exec vitest run`, 필요 시 `biome`/`knip`)과 T07/T08 재리뷰는 위임 여부와 무관하게 그대로 수행한다.
 10. Phase 전환마다 `TaskGet`으로 완료 상태를 확인하고 지연이 있으면 `SendMessage`로 원인을 파악한다.
-11. 9-1 게이트에서 재작업이 결정된 finding(심각도 무관)은 해당 개발자에게 수정 지시 후 관련 리뷰(T07/T08)를 재실행한다. 재작업도 병렬이거나 다른 세션이 같은 브랜치를 공유 편집 중이라는 신호(`git branch -a`/`git worktree list`)가 보이면 T05/T06처럼 `Agent(... isolation: "worktree" ...)`로 격리해 스폰한 뒤 orchestrator가 병합한다. 단독·소범위 수정이고 동시 편집 위험이 없으면 9-1 게이트 예외 규정에 따라 orchestrator가 메인 체크아웃에서 직접 수정할 수 있다.
+11. 9-1 게이트에서 재작업이 결정된 finding(심각도 무관)은 해당 개발자에게 수정 지시 후 관련 리뷰(T07/T08)를 재실행한다. 재작업도 병렬이거나 다른 세션이 같은 브랜치를 공유 편집 중이라는 신호(`git worktree list`에 메인 외 살아 있는 worktree)가 보이면 T05/T06처럼 `Agent(... isolation: "worktree" ...)`로 격리해 스폰한 뒤 orchestrator가 병합한다. 단독·소범위 수정이고 동시 편집 위험이 없으면 9-1 게이트 예외 규정에 따라 orchestrator가 메인 체크아웃에서 직접 수정할 수 있다.
 12. security-reviewer 자체 차단 기준(Critical 미수정 시 배포 비승인)과 9-1 게이트의 재작업 판단은 별개다 - reviewer는 배포 승인/비승인만 판단하고, orchestrator는 "당장 고칠지 백로그로 미룰지"를 9-1 게이트로 최종 결정한다. Critical이 남아있으면 재작업 없이 다음 단계로 진행하지 않는다.
 13. T09 완료 후 `artifacts/task-team/summary.md`에 최종 상태를 정리한다.
 14. 실행 완료 후 `artifacts/task-team/improvement-log.md`를 갱신하고 `TeamDelete`로 팀을 정리한다.

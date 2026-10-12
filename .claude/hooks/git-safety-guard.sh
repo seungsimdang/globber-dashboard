@@ -7,7 +7,7 @@
 #      git checkout -- .(경로 미지정)
 #   2) bare git stash / git stash pop - worktree 간 공유 스택이라 다른 세션 것을 건드릴 수 있음
 #   3) 메인 체크아웃(worktree 아님)에서 브랜치 생성(git checkout -b / git switch -c) -
-#      이미 다른 worktree/브랜치가 있으면(다른 세션이 쓰고 있을 가능성) `Agent(isolation:"worktree")`
+#      이미 다른 worktree가 살아 있으면(다른 세션이 쓰고 있을 가능성) `Agent(isolation:"worktree")`
 #      로 격리 스폰하게 한다(subagent가 스스로 `EnterWorktree`를 호출하는 경로는 막혀 있다).
 #
 # 이 훅을 우회해야 하는 정당한 사유(예: 사용자가 직접 승인한 destructive 작업)가 있으면,
@@ -52,14 +52,16 @@ if printf '%s' "$cmd" | grep -qE '\bgit[[:space:]]+stash[[:space:]]+pop\b'; then
   deny "git stash pop 금지 - 다른 세션이 방금 올린 stash를 팝할 수 있습니다. 'git stash list --format=%H %gs'로 자신의 태그를 찾아 'git stash apply <sha>'를 쓰고, 확인 후 직접 drop하세요."
 fi
 
-# 3) 메인 체크아웃에서 새 브랜치 생성 - 다른 worktree/브랜치가 이미 있으면 차단
+# 3) 메인 체크아웃에서 새 브랜치 생성 - 다른 linked worktree가 살아 있으면 차단
+# 한 체크아웃은 브랜치 하나만 쓰므로 다른 세션이 별도 브랜치에서 작업하려면 worktree가 필요하다.
+# 브랜치 개수(원격·병합 완료 브랜치 포함)는 동시 사용 근거가 아니라서 판정에서 제외한다.
+# 디렉터리가 사라진 prunable worktree도 사용 중이 아니므로 제외한다.
 if printf '%s' "$cmd" | grep -qE '\bgit[[:space:]]+(checkout[[:space:]]+-b|switch[[:space:]]+-c)\b'; then
   # .git이 디렉터리면 메인 체크아웃, 파일이면(gitdir 참조) linked worktree.
   if [ -d .git ]; then
-    worktree_count=$(git worktree list 2>/dev/null | wc -l | tr -d ' ')
-    branch_count=$(git branch -a 2>/dev/null | wc -l | tr -d ' ')
-    if [ "${worktree_count:-1}" -gt 1 ] || [ "${branch_count:-0}" -gt 3 ]; then
-      deny "메인 체크아웃에서 새 브랜치 생성 시도가 감지됐고, 이미 다른 worktree(${worktree_count}개)나 여러 브랜치(${branch_count}개)가 있어 다른 세션이 동시 사용 중일 수 있습니다. orchestrator가 Agent(isolation:\"worktree\")로 격리 스폰한 뒤 그 안에서 브랜치를 만드세요 (subagent가 직접 EnterWorktree를 호출하지 마세요 - 관리형/child 세션에서 실패합니다)."
+    worktree_count=$(git worktree list 2>/dev/null | grep -vc ' prunable$')
+    if [ "${worktree_count:-1}" -gt 1 ]; then
+      deny "메인 체크아웃에서 새 브랜치 생성 시도가 감지됐고, worktree가 메인 포함 ${worktree_count}개 살아 있어 다른 세션이 동시 사용 중일 수 있습니다. orchestrator가 Agent(isolation:\"worktree\")로 격리 스폰한 뒤 그 안에서 브랜치를 만드세요 (subagent가 직접 EnterWorktree를 호출하지 마세요 - 관리형/child 세션에서 실패합니다)."
     fi
   fi
 fi
