@@ -1,27 +1,40 @@
 #!/bin/sh
-# PreToolUse(Bash) 훅: .claude/rules/shared/git-safety.md의 절차를 대화 중 다짐이 아니라
-# 기계적으로 강제한다.
+# PreToolUse(Bash) 훅: 프로젝트 공용 Git 안전 규칙을 대화 중 다짐이 아니라 기계적으로 강제
 #
 # 차단 대상:
-#   1) 파괴적 명령: git reset --hard, git clean(-f/-d/-x), git branch -D,
-#      git checkout -- .(경로 미지정)
+#   0) 프로세스 이름 기준 일괄 종료(pkill, killall) - 사용자가 띄운 dev 서버 등 다른 세션의 프로세스까지 종료함
+#   1) 파괴적 명령: git reset --hard, git clean(-f/-d/-x), git branch -D, git checkout -- .(경로 미지정)
 #   2) bare git stash / git stash pop - worktree 간 공유 스택이라 다른 세션 것을 건드릴 수 있음
-#   3) 메인 체크아웃(worktree 아님)에서 브랜치 생성(git checkout -b / git switch -c) -
-#      이미 다른 worktree가 살아 있으면(다른 세션이 쓰고 있을 가능성) `Agent(isolation:"worktree")`
-#      로 격리 스폰하게 한다(subagent가 스스로 `EnterWorktree`를 호출하는 경로는 막혀 있다).
+#   3) 메인 체크아웃에서 브랜치 생성(git checkout -b / git switch -c) - 다른 linked worktree가 살아 있으면 다른 세션이 쓰는 중일 수 있어 `Agent(isolation:"worktree")` 격리 스폰으로 유도
 #
-# 이 훅을 우회해야 하는 정당한 사유(예: 사용자가 직접 승인한 destructive 작업)가 있으면,
-# 사용자가 터미널에서 `!<command>`로 직접 실행하거나(에이전트의 Bash 도구를 거치지 않음),
-# 이 훅을 일시적으로 settings.json에서 제거한다.
+# 이 훅을 우회해야 하는 정당한 사유(예: 사용자가 직접 승인한 destructive 작업)가 있으면, 사용자가 터미널에서 `!<command>`로 직접 실행하거나(에이전트의 Bash 도구를 거치지 않음), 이 훅을 일시적으로 settings.json에서 제거
 
 input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
-# git 명령이 아니면 통과
+# 커밋 메시지·heredoc 본문 속 글자를 명령으로 오인하지 않도록 heredoc 본문과 따옴표 문자열을 지운 실행 구문
+# ponytail: sh -c "..." 안의 명령도 함께 지워져 통과하지만 이 훅은 실수 방지용이라 허용
+exec_cmd=$(printf '%s\n' "$cmd" | awk '
+  in_doc { if ($0 ~ "^[ \t]*" delim "[ \t]*$") in_doc = 0; next }
+  {
+    print
+    if (match($0, /<<-?[ \t]*["\047]?[A-Za-z_][A-Za-z0-9_]*["\047]?/)) {
+      d = substr($0, RSTART, RLENGTH)
+      sub(/^<<-?[ \t]*["\047]?/, "", d); sub(/["\047]$/, "", d)
+      delim = d; in_doc = 1
+    }
+  }' | tr '\n' '\036' | sed -e 's/"[^"]*"//g' -e "s/'[^']*'//g" | tr '\036' '\n')
+
+# 0) 이름 패턴 종료는 git 명령 여부와 무관하게 차단
+if printf '%s' "$exec_cmd" | grep -qE '(^|[;&|(]\s*)(pkill|killall)\b'; then
+  echo "차단: pkill/killall 금지. 다른 세션이나 사용자가 띄운 프로세스까지 종료됩니다. 직접 띄운 서버는 포트로 지정해 종료하세요: kill \$(lsof -ti tcp:<port>)" >&2
+  exit 2
+fi
+
 printf '%s' "$cmd" | grep -qE '(^|[;&|]\s*)git\b' || exit 0
 
 deny() {
-  echo "차단: $1 (.claude/rules/shared/git-safety.md)" >&2
+  echo "차단: $1 (프로젝트 Git 안전 규칙)" >&2
   exit 2
 }
 
@@ -53,9 +66,9 @@ if printf '%s' "$cmd" | grep -qE '\bgit[[:space:]]+stash[[:space:]]+pop\b'; then
 fi
 
 # 3) 메인 체크아웃에서 새 브랜치 생성 - 다른 linked worktree가 살아 있으면 차단
-# 한 체크아웃은 브랜치 하나만 쓰므로 다른 세션이 별도 브랜치에서 작업하려면 worktree가 필요하다.
-# 브랜치 개수(원격·병합 완료 브랜치 포함)는 동시 사용 근거가 아니라서 판정에서 제외한다.
-# 디렉터리가 사라진 prunable worktree도 사용 중이 아니므로 제외한다.
+# 한 체크아웃은 브랜치 하나만 쓰므로 다른 세션이 별도 브랜치에서 작업하려면 worktree가 필요함
+# 브랜치 개수(원격·병합 완료 브랜치 포함)는 동시 사용 근거가 아니라서 판정에서 제외
+# 디렉터리가 사라진 prunable worktree도 사용 중이 아니므로 제외
 if printf '%s' "$cmd" | grep -qE '\bgit[[:space:]]+(checkout[[:space:]]+-b|switch[[:space:]]+-c)\b'; then
   # .git이 디렉터리면 메인 체크아웃, 파일이면(gitdir 참조) linked worktree.
   if [ -d .git ]; then

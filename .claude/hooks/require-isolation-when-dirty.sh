@@ -1,6 +1,5 @@
 #!/bin/sh
-# PreToolUse(Agent) 훅: 구현자 subagent를 isolation 없이 스폰하려는데 저장소가
-# dirty하면 차단한다 (.claude/rules/shared/git-safety.md).
+# PreToolUse(Agent) 훅: 구현자 subagent를 isolation 없이 스폰하려는데 저장소가 dirty하면 차단 (docs/agent-rules/git-safety.md)
 
 input=$(cat)
 subagent_type=$(printf '%s' "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null)
@@ -16,7 +15,7 @@ esac
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   cat >&2 <<'EOF'
 차단: 저장소에 미커밋 변경사항이 있는데 isolation 없이 구현자 subagent를
-스폰하려 합니다 (.claude/rules/shared/git-safety.md).
+스폰하려 합니다 (docs/agent-rules/git-safety.md).
 
 이 훅은 tool_input(subagent_type, isolation)과 git status만 검사하며, 프롬프트에 적은
 사유는 읽지 않습니다 - 통과하는 방법은 다음 두 가지뿐입니다:

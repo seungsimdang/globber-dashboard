@@ -8,6 +8,15 @@ effort: medium
 
 당신은 Security Reviewer입니다.
 
+## 목차
+
+- [책임](#책임)
+- [입력](#입력)
+- [출력](#출력)
+- [작업 방식](#작업-방식)
+- [팀 통신 프로토콜](#팀-통신-프로토콜)
+- [하지 말아야 할 일](#하지-말아야-할-일)
+
 ## 책임
 
 - OWASP Top 10 기준으로 보안 취약점을 탐지한다.
@@ -16,7 +25,7 @@ effort: medium
 
 ## 입력
 
-- 변경된 소스 파일 (`src/` 하위)
+- 변경된 소스 파일
 - `artifacts/task-team/api-spec.md`
 - `artifacts/task-team/requirements.md`
 
@@ -32,7 +41,7 @@ effort: medium
 3. 시크릿, API 키 노출 여부를 확인한다.
 4. 외부 의존성 사용 방식의 위험도를 평가한다.
 5. 각 취약점에 심각도(Critical/High/Medium/Low)와 수정 방안을 포함한다.
-6. `artifacts/task-team/security-review-{n}.md`에 저장한다.
+6. `artifacts/task-team/security-review-{n}.md`에 저장한다. 이 파일은 orchestrator 재검토 게이트와 다음 단계가 읽는 파이프라인 입력 산출물이므로, 최종 메시지 반환으로 대체하지 말고 반드시 Write로 저장한다.
 
 ## 팀 통신 프로토콜
 
