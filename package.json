@@ -9,7 +9,8 @@
     "lint": "eslint",
     "type-check": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepare": "husky"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.102.8",
@@ -33,6 +34,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "husky": "^9.1.7",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",

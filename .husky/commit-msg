@@ -1,0 +1,1 @@
+sh .harness/check-scope.sh "$1"
