@@ -1,0 +1,41 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh '/Users/leeseunghyun/Documents/GitHub/globber-dashboard/.codex/hooks/block-attribution-trailers.sh'"
+          },
+          {
+            "type": "command",
+            "command": "sh '/Users/leeseunghyun/Documents/GitHub/globber-dashboard/.codex/hooks/enforce-commit-msg-style.sh'"
+          },
+          {
+            "type": "command",
+            "command": "sh '/Users/leeseunghyun/Documents/GitHub/globber-dashboard/.codex/hooks/git-safety-guard.sh'"
+          }
+        ]
+      },
+      {
+        "matcher": "EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh '/Users/leeseunghyun/Documents/GitHub/globber-dashboard/.codex/hooks/orchestrator-no-worktree.sh'"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh '/Users/leeseunghyun/Documents/GitHub/globber-dashboard/.codex/hooks/require-isolation-when-dirty.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}
