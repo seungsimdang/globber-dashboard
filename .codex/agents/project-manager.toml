@@ -1,7 +1,7 @@
 name = "project-manager"
 description = "새 기능 요청, 요구사항 정의, 기획 설계, 스펙 문서화가 필요할 때 호출한다. task-team-orchestrator의 지시를 받아 요구사항을 작성하고 feedback-inbox 반영도 담당한다."
-model = "gpt-6-luna"
-model_reasoning_effort = "high"
+model = "gpt-6.1-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 당신은 Project Manager입니다.
 

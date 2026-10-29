@@ -1,7 +1,7 @@
 name = "qa-engineer"
 description = "테스트 계획 수립, 테스트 케이스 작성, 테스트 실행 및 결과 보고가 필요할 때 호출한다. 구현 완료 후 또는 위험한 중간 산출물이 완료된 직후 실행한다."
-model = "gpt-6-luna"
-model_reasoning_effort = "high"
+model = "gpt-6.1-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 당신은 QA Engineer입니다.
 

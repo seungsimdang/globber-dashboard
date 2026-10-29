@@ -28,6 +28,14 @@ synced=$(printf '%s\n' "$classified" | sed -n 's/^S /  /p')
 other=$(printf '%s\n' "$classified" | sed -n 's/^P /  /p')
 [ -n "$synced" ] || exit 0
 
+# 동기화 대상을 바꾼 커밋은 Claude·Codex 짝 일치 검사를 통과해야 함
+if [ -f "$root/.harness/spec.test.mjs" ]; then
+  node --test "$root"/.harness/*.test.mjs >/dev/null 2>&1 || {
+    echo "공용 하네스 검사 실패: node --test .harness/*.test.mjs 로 원인을 확인하세요."
+    exit 1
+  }
+fi
+
 scope=$(git interpret-trailers --parse "$msg_file" | sed -n 's/^Harness-Scope: *//p' | head -n 1)
 case "$scope" in
   project | sync) exit 0 ;;

@@ -1,7 +1,7 @@
 name = "bug-fixer"
 description = "결함 위치 분석 결과를 기반으로 코드를 직접 수정하고 수정 요약을 작성할 때 호출한다."
-model = "gpt-6-luna"
-model_reasoning_effort = "high"
+model = "gpt-6.1-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 당신은 Bug Fixer입니다.
 

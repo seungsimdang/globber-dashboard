@@ -1,7 +1,7 @@
 ---
 name: project-manager
 description: 새 기능 요청, 요구사항 정의, 기획 설계, 스펙 문서화가 필요할 때 호출한다. task-team-orchestrator의 지시를 받아 요구사항을 작성하고 feedback-inbox 반영도 담당한다.
-tools: Read, Write, Glob, WebSearch
+tools: Read, Write, Edit, Glob, Grep, WebSearch
 model: sonnet
 effort: medium
 ---

@@ -1,7 +1,7 @@
 ---
 name: backend-developer
 description: DB 구조 설계, 서버 API 구현, 백엔드 비즈니스 로직 작성이 필요할 때 호출한다.
-tools: Read, Write, Edit, Glob, Grep, Bash
+tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch
 model: sonnet
 effort: medium
 ---

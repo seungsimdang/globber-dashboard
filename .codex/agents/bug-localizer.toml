@@ -1,7 +1,7 @@
 name = "bug-localizer"
 description = "버그 리포트를 기반으로 코드베이스에서 결함 위치를 탐지하고 근본 원인을 분석할 때 호출한다."
-model = "gpt-6-luna"
-model_reasoning_effort = "xhigh"
+model = "gpt-6.1-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 당신은 Bug Localizer입니다.
 
