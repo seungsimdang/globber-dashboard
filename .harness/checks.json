@@ -1,0 +1,20 @@
+{
+  "lint": [
+    [
+      "pnpm",
+      "exec",
+      "eslint",
+      ".",
+      "--max-warnings",
+      "0"
+    ]
+  ],
+  "typecheck": [
+    [
+      "pnpm",
+      "run",
+      "type-check"
+    ]
+  ],
+  "extra": []
+}

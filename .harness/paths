@@ -30,3 +30,5 @@ docs/agent-rules/
 !.claude/rules/tailwind.md
 !.claude/rules/react-query.md
 !.claude/rules/project-structure.md
+.husky/pre-commit
+!.harness/checks.json
