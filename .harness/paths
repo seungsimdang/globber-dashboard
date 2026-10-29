@@ -20,6 +20,9 @@ docs/agent-rules/
 !docs/agent-rules/project.md
 !docs/agent-harness/CHANGELOG.md
 !.harness/lock.json
+
+.husky/pre-commit
+!.harness/checks.json
 !.claude/agents/devops-engineer.md
 !.codex/agents/devops-engineer.toml
 !docs/agent-rules/nextjs.md
@@ -30,5 +33,3 @@ docs/agent-rules/
 !.claude/rules/tailwind.md
 !.claude/rules/react-query.md
 !.claude/rules/project-structure.md
-.husky/pre-commit
-!.harness/checks.json
