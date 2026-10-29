@@ -16,8 +16,8 @@ Task Team의 T05(frontend)/T06(backend), Bug Team의 병렬 T03-fix처럼 여러
 답을 기다리는 동안 자신의 스테이징은 풀어 둔다. 작업이 끝나면 상대에게 완료와 새 HEAD를 알린다. 상대 파일에서 발견한 이상(테스트 실패, 훅 경고)은 직접 고치지 않고 알린다.
 
 - **격리는 orchestrator가 `Agent` 도구 호출 시 `isolation: "worktree"` 파라미터로 지정한다.** 구현자 subagent(frontend-developer / backend-developer / bug-fixer)는 **`EnterWorktree`를 직접 호출하지 않는다.** 관리형·child·bridged 세션(예: Orca 등 ADE로 래핑되어 실행되는 세션)에서는 subagent가 `EnterWorktree`를 직접 호출하면 "disabled for this session"으로 실패한다. `Agent` 스폰 시점에 Claude Code가 subagent용 worktree를 `.claude/worktrees/<name>/`에 만들고 격리를 강제하며(메인 체크아웃 파일 수정 차단), subagent가 변경을 남기지 않으면 종료 시 자동 삭제한다. worktree 이름은 `Agent`의 `name` 파라미터로 지정한다(예: `task-t05-frontend`, `task-t06-backend`, `bug-fix-{id}`). 이 문서와 Task Team/Bug Team Orchestrator SKILL.md의 지시가 곧 "명시적 worktree 사용 지시"에 해당한다.
-  - 커스텀 subagent 정의(`.claude/agents/*.md`)에 `isolation: worktree` frontmatter를 두면 매 호출마다 격리가 강제되지만, 읽기 전용 역할(code-reviewer / security-reviewer / qa-engineer)에는 붙이지 않는다 - 이들은 병합된 작업 트리를 그대로 읽어야 한다.
-- **orchestrator(메인 세션) 자신은 worktree에 들어가지 않는다.** worktree는 구현자 subagent 전용이며, orchestrator는 메인 체크아웃(또는 세션을 시작한 디렉터리)에 머물면서 `Agent` 스폰과 병합만 한다. orchestrator가 worktree에 들어가면 main 병합·로컬 브랜치 pull처럼 메인 체크아웃을 만져야 하는 순간마다 worktree-isolation sandbox에 막혀 벗어날 수 없게 된다. 이 규칙은 `.claude/hooks/orchestrator-no-worktree.sh`(PreToolUse EnterWorktree 훅)로도 뒷받침되나, 표준 경로(`Agent` `isolation` 파라미터)에서는 subagent가 `EnterWorktree`를 호출하지 않으므로 이 훅은 더 이상 정상 흐름에서 트리거되지 않는 보조 장치다.
+  - 커스텀 subagent 정의(`.claude/agents/*.md`)에 `isolation: worktree` frontmatter를 두면 매 호출마다 격리가 강제되지만, 병합된 작업 트리에서 실행하는 역할(code-reviewer / security-reviewer / qa-engineer)에는 붙이지 않는다 - 이들은 구현 코드를 고치지 않고 병합된 작업 트리를 그대로 읽거나 그 위에서 테스트를 실행해야 한다.
+- **orchestrator(메인 세션) 자신은 worktree에 들어가지 않는다.** worktree는 구현자 subagent 전용이며, orchestrator는 메인 체크아웃(또는 세션을 시작한 디렉터리)에 머물면서 `Agent` 스폰과 병합만 한다. orchestrator가 worktree에 들어가면 main 병합·로컬 브랜치 pull처럼 메인 체크아웃을 만져야 하는 순간마다 worktree-isolation sandbox에 막혀 벗어날 수 없게 된다. 이 규칙은 `.claude/hooks/orchestrator-no-worktree.sh`(PreToolUse EnterWorktree 훅)가 보조로 막는다. 표준 경로(`Agent` `isolation` 파라미터)에서는 `EnterWorktree`를 호출하지 않으므로 이 훅이 동작하지 않는다.
 - **isolation worktree는 저장소 기본 base(`origin/HEAD`)에서 분기된다 - 로컬 HEAD가 아니다.** 직전 단계 산출물/커밋이 아직 `origin`에 push되지 않았으면 새 isolation worktree에 반영되지 않는다(실측 확인). 따라서 병렬 subagent를 스폰하기 전에:
   1. `.claude/settings.json`에 `"worktree": { "baseRef": "head" }`가 설정돼 있는지 확인한다. 설정돼 있으면 isolation worktree가 로컬 HEAD(미푸시 커밋·feature 브랜치 상태 포함)에서 분기되므로 별도 조치가 필요 없다.
   2. 설정이 없다면, 그 시점까지의 산출물이 브랜치에 **커밋**되어 있는지 `git status`/`git log`로 확인하고, 미커밋이면 먼저 커밋한 뒤 `origin`에 push한다.
@@ -35,11 +35,9 @@ worktree 격리가 모든 경우를 막지 못하므로 아래 수칙도 함께 
 
 `git stash`, `git reset --hard`, `git checkout -- .`(경로 미지정), `git clean`, `git branch -D` 등 저장소 전체 또는 다른 worktree/브랜치에 영향을 줄 수 있는 git 명령을 실행하지 않는다 - 자신이 관여하지 않은 다른 세션의 미커밋 변경사항까지 스태시하거나 삭제하거나, 다른 worktree가 사용 중인 브랜치를 지울 위험이 있다.
 
-(실제 발생 사례: BUG010 fixer가 검증 중 `git stash`를 실행해, 동시에 진행 중이던 BUG008/BUG011 fixer가 `risk-guardian.ts`/`strategy-engine.ts`/`pipeline.ts`에 적용하던 변경사항이 함께 쓸려 들어갔다. BUG011 fixer는 이 여파로 자신이 수정한 파일이 작업 도중 원본으로 되돌아가는 것을 직접 겪었다. worktree 격리가 있었다면 애초에 서로의 작업 트리가 분리되어 이 사고가 나지 않았다.)
-
 - 자신이 수정한 파일만 `git diff <path>`, `git status`처럼 경로를 명시하거나 읽기 전용으로 다룬다.
 - 작업 트리 전체를 되돌리거나 정리할 필요가 있다고 판단되면 직접 실행하지 말고 orchestrator에게 상황을 보고해 사람 승인을 받는다.
-- 프로세스는 이름 패턴(`pkill`, `killall`)으로 종료하지 않는다. 사용자가 띄운 dev 서버까지 함께 종료된다. 자신이 띄운 서버만 포트로 지정해 `kill $(lsof -ti tcp:<port>)`로 종료한다. `git-safety-guard.sh` 훅이 차단한다. (실제 발생 사례: T05 구현자가 e2e 전에 `pkill -f "next-server"`를 실행해 사용자의 3000번 dev 서버가 함께 종료됐다.)
+- 프로세스는 이름 패턴(`pkill`, `killall`)으로 종료하지 않는다. 사용자가 띄운 dev 서버까지 함께 종료된다. 자신이 띄운 서버만 포트로 지정해 `kill $(lsof -ti tcp:<port>)`로 종료한다. `git-safety-guard.sh` 훅이 차단한다.
 
 ### 테스트 러너 오염 주의
 

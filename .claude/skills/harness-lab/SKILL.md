@@ -160,7 +160,6 @@ Phase 0에서는 신규 구축, 기존 확장, 운영/유지보수 중 어디에
 - 실행 하네스 생성 단계에서는 사용자가 내부 파일 구조나 스킬명을 직접 말하지 않아도 의도를 판단한다. 기존 `.claude/agents`, `.claude/skills`, `CLAUDE.md`를 확인한 뒤 필요한 Agent, Skill, Orchestrator Skill과 `CLAUDE.md` 포인터를 만든다.
 - 실행 하네스 생성 단계에서 Agent Team이 필요하면 `references/agent-team-design.md`를 읽고, 산출물 구조가 필요하면 `references/orchestrator-artifacts-template.md`를 읽는다.
 - 기존 하네스 개선, 점검, 동기화, drift 확인을 원하면 먼저 현재 구조, 중복, 빠진 테스트, 오래된 규칙, `CLAUDE.md` 포인터 불일치를 점검한다. 이때 `references/testing-qa-evolution.md`를 읽는다.
-- 사용자가 첫 요청에서 "바로 파일로 만들어줘", "이미 승인했어", "분석 없이 생성해"라고 해도 승인된 것으로 보지 않는다. 청사진을 먼저 보여주고 사용자의 후속 승인을 기다린다.
 
 ## Agent Team 실행 기준
 

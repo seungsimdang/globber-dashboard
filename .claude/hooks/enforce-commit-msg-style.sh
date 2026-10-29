@@ -61,9 +61,11 @@ fi
 if [ -z "$fail_reason" ]; then
   hit=$(printf '%s\n' "$msg" | awk '
     function is_blank(s,   t) { t = s; gsub(/^[ \t]+|[ \t]+$/, "", t); return (t == "") }
+    # git 트레일러(Harness-Scope: sync 등)는 연달아 써야 마지막 문단에서 함께 인식되므로 키: 값 줄끼리는 예외
+    function is_trailer(s) { return s ~ /^[A-Za-z][A-Za-z0-9-]*: / }
     NR == 1 { prev = $0; next }
     {
-      if (!is_blank(prev) && !is_blank($0) && $0 !~ /^[ \t]*-[ \t]/) {
+      if (!is_blank(prev) && !is_blank($0) && $0 !~ /^[ \t]*-[ \t]/ && !(is_trailer(prev) && is_trailer($0))) {
         print $0
         exit
       }

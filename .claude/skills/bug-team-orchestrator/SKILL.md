@@ -31,12 +31,12 @@ Bug Reporter, Bug Localizer, Bug Fixer, Postmortem Agent로 구성된 Bug Team�
 
 ## 실행 모드
 
-Hybrid. 티켓·원인 분석·포스트모텀은 Agent Team으로 진행하고, 코드를 수정하는 T03은 저장소에 다른 브랜치·worktree 흔적이 있으면 `Agent(isolation: "worktree")`로 격리한 Subagent로 실행한다.
+Hybrid. 티켓·원인 분석·포스트모텀은 Agent Team으로 진행하고, 코드를 수정하는 T03은 다른 세션이 저장소를 쓰는 신호가 있으면 `Agent(isolation: "worktree")`로 격리한 Subagent로 실행한다.
 
 | Task | 실행 모드 | 진행 상태 | 결과 전달 |
 | --- | --- | --- | --- |
 | T01, T02, T04 | Agent Team | `TaskUpdate` / `TaskGet` | `SendMessage` + `artifacts/bug-team/` 파일 |
-| T03 | Subagent (다른 작업 흔적이 있으면 worktree 격리) | orchestrator가 `TaskUpdate`로 대리 갱신 | 반환값 + 수정 요약 파일, 병합 후 재검증 |
+| T03 | Subagent (동시 사용 신호가 있으면 worktree 격리) | orchestrator가 `TaskUpdate`로 대리 갱신 | 반환값 + 수정 요약 파일, 병합 후 재검증 |
 
 ## 실행 모드 확인
 
@@ -66,14 +66,14 @@ Hybrid. 티켓·원인 분석·포스트모텀은 Agent Team으로 진행하고,
 ## Agent Team 실행 흐름
 
 1. 사용자 버그 설명을 수신하고 `artifacts/bug-team/` 폴더를 확인한다.
-2. `TeamCreate`로 4명의 팀원을 구성한다.
+2. `TeamCreate`로 4명의 팀원을 구성한다. 도구 검색에 `TeamCreate`가 나오지 않는 환경이면 팀을 만들지 않고 각 Task 담당을 `Agent(subagent_type: "<팀원>")` subagent로 하나씩 스폰한다. 이때 진행 상태는 orchestrator가 `TaskUpdate`로 대리 갱신하고, 결과는 subagent 반환값과 `artifacts/bug-team/` 파일로 받으며, 팀원 간 발견 공유는 orchestrator가 다음 스폰 지시문에 넣어 전달한다. `TeamDelete`·`TeamCreate`를 쓰는 팀 정리·재구성 단계는 건너뛴다.
 3. `TaskCreate`로 T01~T04를 등록한다.
 4. T01(bug-reporter): 중복 확인 후 새 버그이면 티켓을 생성하고 `TaskUpdate(completed)`.
    - 중복이면 사용자에게 기존 티켓 ID를 안내하고 팀을 정리한다.
 5. T02(bug-localizer): 티켓을 받아 코드베이스를 탐색하고 결함 위치를 저장한다.
 6. `TaskGet`으로 T02 완료를 확인한 뒤 T03를 시작한다.
 7. T03(bug-fixer): `localize-{id}.md`의 수정 방향을 기반으로 실제 코드를 수정한다.
-   - **T03 시작 전 orchestrator는 `docs/agent-rules/git-safety.md`의 사전 확인(`git branch -a`, `git worktree list`)을 거친다.** 처리 중인 버그가 하나뿐이어도, 저장소에 다른 브랜치/worktree 흔적이 있으면 orchestrator는 bug-fixer를 `Agent(subagent_type: "bug-fixer", isolation: "worktree", name: "bug-fix-{id}", ...)`로 스폰해 자신만의 worktree에서 작업하게 한다. bug-fixer subagent는 `EnterWorktree`를 직접 호출하지 않는다(관리형/child 세션에서 실패). 여러 버그를 동시에 처리해 T03이 병렬 실행되는 경우도 예외 없이 이 규칙을 따르며, 동일 파일을 수정 대상으로 하는 버그끼리는 순차 실행한다.
+   - **T03 시작 전 orchestrator는 `docs/agent-rules/git-safety.md`의 사전 확인(`git worktree list`, `git status`)을 거친다.** 처리 중인 버그가 하나뿐이어도, 살아 있는 다른 worktree가 있거나 `git status`에 자신이 만들지 않은 미커밋 변경이 있으면 orchestrator는 bug-fixer를 `Agent(subagent_type: "bug-fixer", isolation: "worktree", name: "bug-fix-{id}", ...)`로 스폰해 자신만의 worktree에서 작업하게 한다. bug-fixer subagent는 `EnterWorktree`를 직접 호출하지 않는다(관리형/child 세션에서 실패). 여러 버그를 동시에 처리해 T03이 병렬 실행되는 경우도 예외 없이 이 규칙을 따르며, 동일 파일을 수정 대상으로 하는 버그끼리는 순차 실행한다.
    - 격리 worktree는 `origin/HEAD`에서 분기되므로, 미푸시 산출물이 필요하면 `.claude/settings.json`의 `worktree.baseRef: "head"` 설정 여부를 먼저 확인한다(없으면 커밋 후 push).
    - 수정 범위가 예상보다 크거나 판단이 필요하면 orchestrator에게 알리고 사람 확인을 받는다.
    - 빌드·타입 검증을 실행하고 결과를 `fix-{id}.md`에 기록한다. 커밋은 하지 않는다 - orchestrator가 병합·커밋한다.
@@ -86,7 +86,7 @@ Hybrid. 티켓·원인 분석·포스트모텀은 Agent Team으로 진행하고,
 ## 데이터 전달
 
 - Task 진행 상태: `TaskCreate`, `TaskUpdate`, `TaskGet`
-- 팀원 스폰 지시: 지시문에 `필요 도구: Read, Edit, Bash`처럼 지시 수행에 필요한 도구를 한 줄로 선언하고, 스폰 전에 에이전트 목록의 Tools와 대조한다. 없는 도구가 필요하면 스폰하지 않고 사용자에게 보고한다. `require-agent-tool-declaration.sh`가 선언 누락과 정의에 없는 도구 선언을 차단하고, 통과하면 선언 줄을 지운 지시문으로 스폰해 subagent에는 전달하지 않는다.
+- 팀원 스폰 지시: 지시문에 `필요 도구: Read, Edit, Bash`처럼 지시 수행에 필요한 도구를 한 줄로 선언하고, 스폰 전에 에이전트 목록의 Tools와 대조한다. 없는 도구가 필요하면 스폰하지 않고 사용자에게 보고한다. 고칠 파일은 `수정 파일: 경로, 경로` 한 줄로 적고(새 파일만 만들면 `수정 파일: 없음`), 이미 있는 파일을 고치면 Edit를 선언한다. Write로 통째 다시 쓰는 것으로 Edit를 대신하지 않는다. `require-agent-tool-declaration.sh`가 선언 누락, 정의에 없는 도구 선언, 기존 파일 수정의 Edit 누락, Edit 없는 Write 선언의 `수정 파일:` 줄 누락을 차단하고, 통과하면 선언 줄을 지운 지시문으로 스폰해 subagent에는 전달하지 않는다.
 - 발견 공유: `SendMessage`
 - 산출물: `artifacts/bug-team/` 파일
 
