@@ -78,7 +78,7 @@ Hybrid. 요구사항·설계·API 명세·리뷰·QA는 Agent Team으로 진행 
 ## Agent Team 실행 흐름
 
 1. 사용자 요청을 원문 그대로 구조화하고 모호한 항목과 승인 지점을 플래그하여 `artifacts/task-team/00-input.md`에 저장한다. (분석·해석 없이 intake만)
-2. `TeamCreate`로 아래 표의 7명을 구성한다.
+2. `TeamCreate`로 아래 표의 7명을 구성한다. 도구 검색에 `TeamCreate`가 나오지 않는 환경이면 팀을 만들지 않고 각 Task 담당을 `Agent(subagent_type: "<팀원>")` subagent로 하나씩 스폰한다. 이때 진행 상태는 orchestrator가 `TaskUpdate`로 대리 갱신하고, 결과는 subagent 반환값과 `artifacts/task-team/` 파일로 받으며, 팀원 간 발견 공유는 orchestrator가 다음 스폰 지시문에 넣어 전달한다. `TeamDelete`·`TeamCreate`를 쓰는 14번과 하이브리드 전환의 팀 재구성은 건너뛴다.
 3. `TaskCreate`로 T01~T09를 의존 관계와 함께 등록한다.
 4. 팀원들은 자기 Task 시작 시 `TaskUpdate(status: in_progress)`로 갱신한다.
 5. **T02 완료 후 사용자 확인 게이트.** `requirements.md` 저장 직후, orchestrator는 기능 분해·수용 기준·edge case 요약을 사용자에게 보고하고 명시적 승인을 받은 뒤에만 T03/T04로 진행한다. 요구사항은 design-spec·api-spec·구현이 그 위에 쌓이는 기준 산출물이므로 이 지점에서 방향을 확정한다. 사용자가 수정을 요청하면 project-manager에게 반영 지시 후 T02를 재실행하고, 다시 이 게이트를 거친다. **이 게이트는 Task Team 전용이다** - bug-team-orchestrator에는 이런 사전 승인 게이트가 없으므로(수정 방향이 불명확할 때만 확인), 두 orchestrator의 승인 지점을 혼동해 명세에 없는 게이트를 임의로 추가하지 않는다.
@@ -116,10 +116,10 @@ Hybrid. 요구사항·설계·API 명세·리뷰·QA는 Agent Team으로 진행 
 
 이 경우에도 수정 후 재검증(`docs/agent-rules/project.md`의 검증 명령)은 위임 여부와 무관하게 그대로 수행하고, T07/T08 재리뷰는 11번 기준(Low 이하만 수정했으면 생략)을 따른다.
 10. Phase 전환마다 `TaskGet`으로 완료 상태를 확인하고 지연이 있으면 `SendMessage`로 원인을 파악한다.
-11. 9-1 게이트에서 재작업이 결정된 finding은 해당 개발자에게 수정 지시 후 관련 리뷰(T07/T08)를 재실행한다. 재리뷰 지시문의 검토 범위는 (a) 이전 finding의 해결 여부와 (b) 이번 재작업 diff가 새로 만든 코드로 한정하고, 재작업 diff 주변의 기존 코드를 새로 훑게 하지 않는다. 재작업이 끝나 더 고칠 Medium 이상이 없으면, T09로 넘어가기 전에 사이클 전체 diff(사이클 시작 커밋부터 현재까지)를 대상으로 T07/T08 최종 리뷰를 1회 실행한다. 최종 리뷰 파일도 `code-review-{n}.md`/`security-review-{n}.md` 번호 규칙을 따르고, 지시문에 "사이클 전체 최종 리뷰"임을 명시한다. 최종 리뷰의 finding도 9-1의 2차 이후 기준을 따른다. 재작업도 병렬이거나 다른 세션이 같은 브랜치를 공유 편집 중이라는 신호(`git branch -a`/`git worktree list`)가 보이면 T05/T06처럼 `Agent(... isolation: "worktree" ...)`로 격리해 스폰한 뒤 orchestrator가 병합한다. 단독·소범위 수정이고 동시 편집 위험이 없으면 9-1 게이트 예외 규정에 따라 orchestrator가 메인 체크아웃에서 직접 수정할 수 있다.
+11. 9-1 게이트에서 재작업이 결정된 finding은 해당 개발자에게 수정 지시 후 관련 리뷰(T07/T08)를 재실행한다. 재리뷰 지시문의 검토 범위는 (a) 이전 finding의 해결 여부와 (b) 이번 재작업 diff가 새로 만든 코드로 한정하고, 재작업 diff 주변의 기존 코드를 새로 훑게 하지 않는다. 재작업이 끝나 더 고칠 Medium 이상이 없으면, T09로 넘어가기 전에 사이클 전체 diff(사이클 시작 커밋부터 현재까지)를 대상으로 T07/T08 최종 리뷰를 1회 실행한다. 최종 리뷰 파일도 `code-review-{n}.md`/`security-review-{n}.md` 번호 규칙을 따르고, 지시문에 "사이클 전체 최종 리뷰"임을 명시한다. 최종 리뷰의 finding도 9-1의 2차 이후 기준을 따른다. 재작업도 병렬이거나 다른 세션이 같은 브랜치를 공유 편집 중이라는 신호(`git worktree list`의 살아 있는 worktree, `git status`의 남의 미커밋 변경)가 보이면 T05/T06처럼 `Agent(... isolation: "worktree" ...)`로 격리해 스폰한 뒤 orchestrator가 병합한다. 단독·소범위 수정이고 동시 편집 위험이 없으면 9-1 게이트 예외 규정에 따라 orchestrator가 메인 체크아웃에서 직접 수정할 수 있다.
 
    **Low 이하만 수정한 재작업은 재리뷰를 생략한다.** 이번 재작업에서 고친 finding이 모두 Low 이하(9-1에서 사용자가 이번 사이클 포함으로 결정한 Low 포함)면 그 재작업에 대한 T07/T08 재리뷰를 실행하지 않는다. 재검증(`docs/agent-rules/project.md`의 검증 명령)은 그대로 수행하고, `triage-N.md`에 재리뷰 생략과 그 근거(고친 finding 목록과 심각도)를 남긴다. Medium 이상이 하나라도 섞여 있으면 생략하지 않는다. 사이클 전체 최종 리뷰 뒤 Low 이하만 고쳤으면 최종 리뷰를 다시 실행하지 않고 T09로 넘어간다.
-12. security-reviewer 자체 차단 기준(Critical 미수정 시 배포 비승인)과 9-1 게이트의 재작업 판단은 별개다 - reviewer는 배포 승인/비승인만 판단하고, orchestrator는 "당장 고칠지 백로그로 미룰지"를 9-1 게이트로 최종 결정한다. Critical이 남아있으면 재작업 없이 다음 단계로 진행하지 않는다.
+12. security-reviewer 자체 차단 기준(Critical/High 미수정 시 배포 비승인)과 9-1 게이트의 재작업 판단은 별개다 - reviewer는 배포 승인/비승인만 판단하고, orchestrator는 "당장 고칠지 백로그로 미룰지"를 9-1 게이트로 최종 결정한다. Critical/High가 남아있으면 재작업 없이 다음 단계로 진행하지 않는다.
 13. T09 완료 후 `artifacts/task-team/summary.md`에 최종 상태를 정리한다.
 14. 실행 완료 후 `artifacts/task-team/improvement-log.md`를 갱신하고 `TeamDelete`로 팀을 정리한다.
 15. **사용자가 feature 브랜치를 `main`에 병합하라고 지시하면**, 병합 후 타입 검사·전체 테스트 재검증까지 마친 뒤, 병합에 사용된 로컬 feature 브랜치와 남아있는 관련 worktree를 다시 묻지 않고 orchestrator가 정리한다(`git branch -d`, 필요 시 `git worktree remove`). **병합 완료가 검증된 브랜치만** 삭제한다 - 병합 전이거나 충돌·재검증 실패가 있었던 브랜치는 제외한다. 이는 "파괴적 명령은 사용자 승인 필요" 원칙의 명시적 예외다(검증된 로컬 브랜치 삭제는 `git reflog`로 복구 가능, 사용자가 병합을 지시한 시점에 후속 정리까지 위임된 것으로 본다). `origin`에 푸시된 원격 브랜치나 미병합 브랜치는 이 예외에 해당하지 않는다.
@@ -127,7 +127,7 @@ Hybrid. 요구사항·설계·API 명세·리뷰·QA는 Agent Team으로 진행 
 ## 데이터 전달
 
 - Task 진행 상태: `TaskCreate`, `TaskUpdate`, `TaskGet`
-- 팀원 스폰 지시: 지시문에 `필요 도구: Read, Edit, Bash`처럼 지시 수행에 필요한 도구를 한 줄로 선언하고, 스폰 전에 에이전트 목록의 Tools와 대조한다. 없는 도구가 필요하면 스폰하지 않고 사용자에게 보고한다. `require-agent-tool-declaration.sh`가 선언 누락과 정의에 없는 도구 선언을 차단하고, 통과하면 선언 줄을 지운 지시문으로 스폰해 subagent에는 전달하지 않는다.
+- 팀원 스폰 지시: 지시문에 `필요 도구: Read, Edit, Bash`처럼 지시 수행에 필요한 도구를 한 줄로 선언하고, 스폰 전에 에이전트 목록의 Tools와 대조한다. 없는 도구가 필요하면 스폰하지 않고 사용자에게 보고한다. 고칠 파일은 `수정 파일: 경로, 경로` 한 줄로 적고(새 파일만 만들면 `수정 파일: 없음`), 이미 있는 파일을 고치면 Edit를 선언한다. Write로 통째 다시 쓰는 것으로 Edit를 대신하지 않는다. `require-agent-tool-declaration.sh`가 선언 누락, 정의에 없는 도구 선언, 기존 파일 수정의 Edit 누락, Edit 없는 Write 선언의 `수정 파일:` 줄 누락을 차단하고, 통과하면 선언 줄을 지운 지시문으로 스폰해 subagent에는 전달하지 않는다.
 - 실시간 발견 공유: `SendMessage`
 - 다음 단계가 읽어야 할 산출물: `artifacts/task-team/` 파일
 

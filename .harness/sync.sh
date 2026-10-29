@@ -1,13 +1,28 @@
 #!/bin/sh
-# SessionStart(startup)·post-commit·post-merge 훅: 범용 하네스(seungness)와 양방향 자동 동기화(안내만, 차단 없음)
-# 인자: session(받기+올리기, 결과를 세션 맥락으로, 실패는 systemMessage로 화면에도 출력) | commit(올리기만, 백그라운드 실행 후 .git/harness-sync.log에 기록)
+# SessionStart 훅: 범용 하네스 업데이트 필요 여부만 안내, 현재 작업 저장소 변경 없음
+# 인자: session(읽기 전용 상태 안내) | commit(기존 Git 훅과의 호환용, 동작 없음)
 # seungness 위치는 HARNESS_HUB, 없으면 프로젝트와 같은 폴더의 seungness
 # git 훅이 넘긴 GIT_DIR·GIT_INDEX_FILE이 seungness git 명령을 이 저장소로 향하게 하므로 제거함
 unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+[ "${1:-}" = commit ] && exit 0
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 hub="${HARNESS_HUB:-$(dirname "$root")/seungness}"
-if [ ! -f "$hub/bin/harness.mjs" ]; then
-  [ "${1:-}" = session ] && echo "범용 하네스 동기화 건너뜀: $hub/bin/harness.mjs 없음(HARNESS_HUB로 위치 지정)"
+if [ ! -f "$hub/bin/harness-automation.mjs" ]; then
+  [ "${1:-}" = session ] && echo "범용 하네스 업데이트 확인 실패: $hub/bin/harness-automation.mjs 없음(허브 업데이트 필요)"
+  exit 0
+fi
+
+# GUI 훅의 PATH에 Homebrew 경로가 빠진 경우만 보정, 자식 커밋 훅에도 전달
+if ! command -v node >/dev/null 2>&1; then
+  PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+  export PATH
+fi
+if ! command -v node >/dev/null 2>&1; then
+  if [ "${1:-}" = session ]; then
+    echo '{"systemMessage":"범용 하네스 동기화 실패: node를 찾을 수 없습니다. Node.js 설치와 훅 PATH를 확인하세요."}'
+  else
+    echo "범용 하네스 동기화 실패: node를 찾을 수 없습니다. Node.js 설치와 훅 PATH를 확인하세요." >>"$(git rev-parse --git-common-dir)/harness-sync.log"
+  fi
   exit 0
 fi
 
@@ -26,16 +41,10 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 case "${1:-}" in
-  session) HARNESS_HOOK_JSON=1 node "$hub/bin/harness.mjs" auto "$root" both ;;
+  session) HARNESS_HOOK_JSON=1 node "$hub/bin/harness-automation.mjs" status "$root" ;;
   commit)
-    # generic 커밋이 아니면 node를 띄우지 않고 끝냄. 병합 커밋은 병합된 generic 커밋을 올려야 해서 통과
-    if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -le 2 ] &&
-      ! git log -1 --format='%(trailers:key=Harness-Scope,valueonly)' | grep -qx generic; then
-      exit 0
-    fi
-    log="$(git rev-parse --git-common-dir)/harness-sync.log"
-    # 커밋을 기다리게 하지 않으려고 백그라운드로 실행. 실패는 다음 세션 시작 때 다시 시도됨
-    (date '+%F %T' && node "$hub/bin/harness.mjs" auto "$root" push 2>&1) >>"$log" &
+    # origin에 반영된 generic 변경은 서버의 정기 실행에서 PR 생성
+    :
     ;;
 esac
 exit 0
