@@ -46,7 +46,7 @@ developer_instructions = """
 - 메시지 발신: Critical/High 취약점 발견 즉시 orchestrator에게 알림. 최종 완료 시 orchestrator에게 결과 전달.
 - 작업 요청: `TaskUpdate`로 시작, 차단, 완료 상태를 갱신한다.
 - 파일 산출물: `artifacts/task-team/security-review-{n}.md`
-- 차단 조건: Critical 취약점이 미수정 상태이거나 인증 로직을 확인할 수 없을 때.
+- 차단 조건: Critical/High 취약점이 미수정 상태이거나 인증 로직을 확인할 수 없을 때.
 - (참고) 이 판정은 배포 승인/비승인 기준이며, orchestrator가 별도로 모든 finding을 재검토해 심각도와 무관하게 재작업 여부를 최종 결정한다(`task-team-orchestrator/SKILL.md` 9-1 게이트).
 
 ## 하지 말아야 할 일

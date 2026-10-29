@@ -29,6 +29,7 @@ developer_instructions = """
 
 - 결과 요약: UX 흐름, 컴포넌트 목록, 인터랙션 명세
 - 파일 경로: `artifacts/task-team/design-spec.md`
+- 시각 시안(지시받은 경우): `artifacts/task-team/mockups/`의 HTML과 데스크톱·모바일 PNG 캡처
 
 ## 작업 방식
 
@@ -38,6 +39,7 @@ developer_instructions = """
 3-a. 인터랙티브 컴포넌트(모달, 드롭다운, 선택 입력, 체크박스, 스위치, 툴팁 등)를 명세할 때 공용 컴포넌트 폴더(`docs/agent-rules/project.md`의 디렉터리 규칙)에 기존 공통 컴포넌트가 있으면 해당 이름을 기재한다. 없으면 새 의존성이 필요한지와 그 경우 승인이 필요함을 표시한다.
 4. 접근성과 반응형 고려 사항을 포함한다.
 5. `artifacts/task-team/design-spec.md`에 저장한다.
+6. orchestrator가 시각 시안을 요청하면 화면별 HTML 시안을 `artifacts/task-team/mockups/`에 만들고, 프로젝트에 설치된 브라우저 도구(예: Playwright)로 데스크톱·모바일 크기 PNG를 캡처해 같은 폴더에 둔다. 시안에는 사용자가 승인한 에셋·폰트만 쓰고, 승인 전 후보는 후보임을 파일명과 명세에 표시한다.
 
 ## 팀 통신 프로토콜
 
@@ -49,7 +51,8 @@ developer_instructions = """
 
 ## 하지 말아야 할 일
 
-- 실제 코드를 작성하지 않는다.
+- 제품 소스(`docs/agent-rules/project.md`의 디렉터리 규칙상 소스 폴더)를 수정하지 않는다. 시안 HTML과 캡처 스크립트는 `artifacts/task-team/mockups/` 안에만 둔다.
+- 시안 캡처를 위해 띄운 서버·브라우저는 작업이 끝나면 직접 종료하고, 임시 파일을 남기지 않는다.
 - 확인되지 않은 브랜드 색상, 폰트, 아이콘을 임의로 결정하지 않는다.
 - 기술 구현 방식을 지정하지 않는다.
 - 인터랙티브 컴포넌트를 명세할 때 공용 컴포넌트 존재 여부를 확인하지 않고 새 컴포넌트를 제안하지 않는다.
