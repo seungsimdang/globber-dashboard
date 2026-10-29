@@ -69,3 +69,8 @@ Husky(`.husky/`, `prepare` 스크립트로 `pnpm install` 때 설치)에 아래 
 | `project-structure.md` | 파일 추가·이동, 목업 서비스 작업 전 |
 
 프로젝트 전용 에이전트 `devops-engineer`(`.claude/agents/devops-engineer.md`, `.codex/agents/devops-engineer.toml`)도 동기화에서 제외한다.
+
+
+## 공용 커밋 검사
+
+`.husky/pre-commit`은 `node .harness/pre-commit.mjs`를 실행한다. 공용 검사기가 `.harness/checks.json`의 프로젝트 추가 검사, 경고 차단 lint, 타입 검사와 공용 하네스 테스트를 순서대로 실행한다. 신원 제한은 설정된 프로젝트의 로컬 커밋에 적용한다. CI는 같은 검사기를 PR 기준 임시 Git 인덱스로 실행하고 파일 자동 수정이 발생하면 실패한다.
