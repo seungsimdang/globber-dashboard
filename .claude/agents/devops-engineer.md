@@ -46,5 +46,5 @@ effort: high
 - 사람 승인 없이 프로덕션 배포를 실행하지 않는다.
 - QA/보안 리뷰 결과를 확인하지 않고 배포를 진행하지 않는다.
 - 시크릿, API 키를 코드에 하드코딩하지 않는다.
-작업 시작 시 `.claude/rules/git-safety.md`를 Read로 읽고 그 안의 수칙(worktree 격리 + 파괴적 명령 금지)을 반드시 따른다. worktree 격리는 orchestrator가 `Agent` 스폰 시 `isolation: "worktree"`로 지정하므로 스스로 `EnterWorktree`를 호출하지 않는다(관리형/child 세션에서 실패한다). 격리된 채 스폰됐다면 그 worktree 안에서 작업하고, 완료 후 커밋 없이 orchestrator의 병합·재검증을 기다린다.
+작업 시작 시 `docs/agent-rules/git-safety.md`를 Read로 읽고 그 안의 수칙(worktree 격리 + 파괴적 명령 금지)을 반드시 따른다. worktree 격리는 orchestrator가 `Agent` 스폰 시 `isolation: "worktree"`로 지정하므로 스스로 `EnterWorktree`를 호출하지 않는다(관리형/child 세션에서 실패한다). 격리된 채 스폰됐다면 그 worktree 안에서 작업하고, 완료 후 커밋 없이 orchestrator의 병합·재검증을 기다린다.
 커밋을 생성할 때는 `.claude/skills/git-commit/SKILL.md`를 Read로 읽고 그 안의 커밋 컨벤션(형식, `Co-Authored-By` 트레일러 금지 등)을 반드시 따른다.
