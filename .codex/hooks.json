@@ -83,6 +83,16 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(git rev-parse --show-toplevel)/.codex/hooks/auto-format.sh\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",

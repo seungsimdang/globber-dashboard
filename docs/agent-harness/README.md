@@ -31,7 +31,7 @@ Codex는 `AGENTS.md`, Claude는 `CLAUDE.md`에서 시작한다. 역할 11개와 
 검사 배치 기준은 `docs/agent-rules/enforcement-placement.md`를 따른다. Git 훅(pre-commit, commit-msg, pre-push)과 CI는 프로젝트 소유이며 `docs/agent-rules/project.md`에 적는다. 범용 하네스가 요구하는 Git 훅은 commit-msg(`.harness/check-scope.sh`)와 post-commit·post-merge(`.harness/sync.sh commit`)이며 등록 방법은 `docs/agent-rules/project.md`의 Git 훅 절을 따른다.
 
 - SessionStart(`startup`) 훅은 `.harness/sync.sh session`으로 범용 하네스와 양방향 동기화한다. 규칙은 `sync.md`.
-- Claude·Codex 런타임 훅은 각 도구의 등록 구조(`.claude/settings.json`, `.codex/hooks.json`)를 유지한다. Codex Edit|Write 훅은 `.codex/hooks/codex-tool-adapter.mjs`를 거쳐 실행한다. Codex에 대응 도구가 없는 AskUserQuestion·EnterWorktree·isolation·fork·Agent 관련 훅은 Claude에만 둔다.
+- Claude·Codex 런타임 훅은 각 도구의 등록 구조(`.claude/settings.json`, `.codex/hooks.json`)를 유지한다. Codex PreToolUse Edit|Write 훅은 `.codex/hooks/codex-tool-adapter.mjs`를 거쳐 실행한다. PostToolUse 자동 수정은 공용 `.harness/auto-format.mjs`가 원본 편집·패치 입력에서 대상 파일을 추출한다. Codex에 대응 도구가 없는 AskUserQuestion·EnterWorktree·isolation·fork·Agent 관련 훅은 Claude에만 둔다.
 - 미확인 주장·질문 미응답 차단은 도구별로 방식이 다르다. Claude는 Stop의 `.claude/hooks/judge-unverified-claims.sh`가 이번 턴 사용자 메시지·도구 기록과 마지막 응답을 `claude -p`(haiku)로 판정하고, Codex는 `.codex/hooks/block-unverified-claims.sh` 정규식 판정을 유지한다(질문 미응답은 판정하지 않음).
 - `block-comment-line-wrap.sh`는 프로젝트의 `scripts/check-comment-line-breaks.mjs`가 있을 때만 검사한다. 없으면 통과한다.
 - `block-lint-warnings-on-commit.sh`는 에이전트의 `git commit` 직전에 저장소 루트의 `biome.json(c)`이면 `biome check --error-on-warnings`, `eslint.config.*`이면 `eslint --max-warnings=0`을 HEAD 대비 변경 파일과 추적하지 않는 파일에 실행해 경고·오류가 있으면 차단한다. 다른 linter이거나 `node_modules/.bin`에 실행 파일이 없으면 통과한다. 사람이 직접 하는 커밋은 프로젝트 pre-commit 훅이 맡는다.
