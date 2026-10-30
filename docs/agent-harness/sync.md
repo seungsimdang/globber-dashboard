@@ -85,6 +85,26 @@ node ../seungness/bin/harness.mjs push .   # 올리기. seungness 현재 브랜�
 
 소스·문서 검사기는 `.harness/check-*.sh`와 `.harness/check-comment-line-breaks.mjs`로 배포한다. 주석 훅은 프로젝트 `scripts/` 검사기를 우선하고, 없으면 공용 검사기를 사용한다. Git 인덱스 검사기의 lint-staged 연결 여부는 프로젝트가 정한다. 작성자 강제·프로젝트 병합 정책·React Doctor·Tailwind·admin 및 UI 컴포넌트 검사는 프로젝트 소유로 유지한다.
 
+### 문장 사이 빈 줄 검사
+
+Biome를 사용하는 프로젝트의 공용 lint 진입점은 다음과 같다. 프로젝트에 설치된 Biome와 TypeScript를 사용하며 추가 패키지는 설치하지 않는다.
+
+```bash
+node .harness/biome-check.mjs check . --error-on-warnings
+node .harness/biome-check.mjs check --write .
+```
+
+- 블록·함수·클래스·인터페이스·열거형 선언 뒤와 `return` 앞에 다음/이전 문장이 있으면 빈 줄을 요구한다.
+- 변수 선언과 실행 코드 사이, 여러 줄짜리 변수 선언 앞뒤에도 빈 줄을 요구한다. 연속된 한 줄 변수 선언은 묶어서 쓸 수 있다.
+- 기준은 [Airbnb의 블록 뒤 빈 줄 규칙](https://github.com/airbnb/javascript#whitespace)과 [ESLint Stylistic의 문장 구분 규칙](https://eslint.style/rules/padding-line-between-statements)이다. 여러 줄 선언의 앞뒤 구분은 긴 선언이 이어지는 코드를 위한 공용 정책이다. 의미에 따른 상태 그룹 분리는 직접 작성한다.
+- TypeScript 구문 트리의 인접 문장을 검사한다. 문자열·템플릿·JSX 본문은 수정하지 않고, 설명 주석은 다음 문장에 붙여 둔다. 기존 빈 줄은 삭제하지 않는다.
+- Biome가 성공한 뒤 `--verbose`의 실제 처리·수정 파일 목록에 있는 JS·TS 파일만 검사한다. Biome의 includes·제외·Git ignore·파일 경로·`--staged`·`--changed` 선택 결과를 그대로 따른다. 목록 형식을 해석할 수 없거나 TypeScript를 불러올 수 없으면 실패한다.
+- `check`·`lint`·`format`·`ci`를 지원하며 `--write` 또는 `--fix`에서 빈 줄을 자동 수정한다. reporter·stdin 모드는 지원하지 않는다. Biome가 먼저 실패하면 빈 줄 검사도 실행하지 않으므로 Biome 오류를 해결하고 다시 실행한다.
+- 새 연결의 기본 lint와 기존 `.harness/checks.json`의 일반적인 `biome`·`pnpm exec biome`·`npm exec -- biome`·`npx biome` 명령은 공용 pre-commit·CI에서 이 실행기를 사용한다. Claude·Codex의 커밋 전 검사도 공용 실행기를 사용한다. 프로젝트 설정 파일 자체는 덮어쓰지 않는다.
+- 터미널의 `biome` 직접 실행과 에디터의 Biome 확장은 이 검사기를 호출하지 않는다. 프로젝트 `package.json`의 lint·수정 명령에도 위 진입점을 연결해야 함께 실행된다. 실행기와 검사기는 `.harness/` 동기화로 배포한다.
+
+검증은 `node --test .harness/statement-spacing.test.mjs`로 실행한다. 앱 의존성이 없는 허브에서는 `HARNESS_TEST_PROJECT=/설치된/프로젝트 node --test harness/.harness/statement-spacing.test.mjs`로 실제 Biome·TypeScript를 사용한다. 의존성이 없으면 해당 검증은 사유와 함께 건너뛴다.
+
 
 ## 공용 pre-commit·CI 계약
 
