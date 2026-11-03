@@ -10,6 +10,7 @@ Claude와 Codex는 코드·문서·Git 작업 전에 이 폴더에서 현재 작
 | --- | --- |
 | `project.md` | 모든 작업 전. 스택, 디렉터리, 검증 명령, 스타일 규칙과 프로젝트 전용 규칙 문서 목록 |
 | `enforcement-placement.md` | 검사 로직을 Hook, 테스트, 린트 중 어디에 둘지 판단할 때 |
+| `usage-budget.md` | 문서 탐색·에이전트 위임·검증 전. 사용량 피드백의 영구 기억과 훅 계약 |
 | `branch-strategy.md` | 브랜치, worktree, 병합 작업 전 |
 | `git-safety.md` | Git 명령, 병렬 Agent, worktree 작업 전 |
 
