@@ -39,6 +39,15 @@
     ],
     "PreToolUse": [
       {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.harness/usage_guard.py\" codex",
+            "timeout": 15
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -96,6 +105,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.harness/usage_guard.py\" codex",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "sh \"$(git rev-parse --show-toplevel)/.codex/hooks/require-feasibility-verdict.sh\""
           }
         ]
@@ -115,6 +133,39 @@
           {
             "type": "command",
             "command": "sh \"$(git rev-parse --show-toplevel)/.codex/hooks/block-unverified-claims.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.harness/usage_guard.py\" codex",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.harness/usage_guard.py\" codex",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.harness/usage_guard.py\" codex",
+            "timeout": 15
           }
         ]
       }

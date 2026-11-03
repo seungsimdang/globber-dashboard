@@ -69,11 +69,11 @@ Hybrid. 요구사항·설계·API 명세·리뷰·QA는 Agent Team으로 진행 
 | T02-requirements | project-manager | `00-input.md` | `artifacts/task-team/requirements.md` | T01 | 기능 분해·수용 기준·우선순위·edge case 포함 |
 | T03-design | designer | `requirements.md` | `artifacts/task-team/design-spec.md` | T02 | 컴포넌트 목록·인터랙션 포함 |
 | T04-api-spec | backend-developer | `requirements.md` | `artifacts/task-team/api-spec.md` | T02 | 엔드포인트·스키마 포함, 테스트는 영향받는 기존 테스트 목록만(작성 담당 배정 없음) |
-| T05-frontend | frontend-developer | `design-spec.md`, `api-spec.md` | 소스 코드 | T03, T04 | 모든 컴포넌트 구현 완료, 전체 테스트 실행, 새 테스트 작성 없음(깨진 기존 테스트 갱신만) |
-| T06-backend | backend-developer | `requirements.md`, `api-spec.md` | 소스 코드 | T04 | API 구현·유효성 검사 완료, 전체 테스트 실행, 새 테스트 작성 없음(깨진 기존 테스트 갱신만) |
-| T07-code-review | code-reviewer | 소스 코드, `requirements.md` | `artifacts/task-team/code-review-1.md` | T05, T06 | 통과/재작업 판정 포함, **구현 코드 주석에 이번 사이클 한정 식별자(요구사항 항목 ID·리뷰 finding ID·게이트 ID) 인용 여부 확인** |
-| T08-security | security-reviewer | 소스 코드, `api-spec.md` | `artifacts/task-team/security-review-1.md` | T05, T06 | 심각도별 취약점 목록 포함 |
-| T09-qa | qa-engineer | `requirements.md`, 소스 코드 | `artifacts/task-team/qa-report-1.md` | T07, T08 | 이번 변경의 신규 테스트를 QA가 직접 작성, 통과/실패/미검증 분류 완료, **모든 신규 테스트가 검증 대상을 실제 소스에서 import** (로직 재구현 금지) |
+| T05-frontend | frontend-developer | `design-spec.md`, `api-spec.md` | 소스 코드, `artifacts/task-team/implementation-{n}.md` | T03, T04 | 모든 컴포넌트 구현 완료, 구현 기록 작성("리뷰 확인 필요"·"확인하지 못한 것" 절, 해당 없으면 "없음"), 전체 테스트 실행, 새 테스트 작성 없음(깨진 기존 테스트 갱신만) |
+| T06-backend | backend-developer | `requirements.md`, `api-spec.md` | 소스 코드, `artifacts/task-team/implementation-{n}.md` | T04 | API 구현·유효성 검사 완료, 구현 기록 작성("리뷰 확인 필요"·"확인하지 못한 것" 절, 해당 없으면 "없음"), 전체 테스트 실행, 새 테스트 작성 없음(깨진 기존 테스트 갱신만) |
+| T07-code-review | code-reviewer | 소스 코드, `requirements.md`, `implementation-*.md` | `artifacts/task-team/code-review-1.md` | T05, T06 | 통과/재작업 판정 포함, 구현 기록의 "리뷰 확인 필요" 항목별 타당/부당 판정 포함, **구현 코드 주석에 이번 사이클 한정 식별자(요구사항 항목 ID·리뷰 finding ID·게이트 ID) 인용 여부 확인** |
+| T08-security | security-reviewer | 소스 코드, `api-spec.md`, `implementation-*.md` | `artifacts/task-team/security-review-1.md` | T05, T06 | 심각도별 취약점 목록 포함, 구현 기록의 "리뷰 확인 필요" 항목 중 보안 관련 항목 판정 포함 |
+| T09-qa | qa-engineer | `requirements.md`, 소스 코드, `implementation-*.md` | `artifacts/task-team/qa-report-1.md` | T07, T08 | 이번 변경의 신규 테스트를 QA가 직접 작성, 통과/실패/미검증 분류 완료, 구현 기록의 "확인하지 못한 것" 항목별 검증 결과 또는 미검증 사유 포함, **모든 신규 테스트가 검증 대상을 실제 소스에서 import** (로직 재구현 금지) |
 
 ## Agent Team 실행 흐름
 
@@ -93,7 +93,7 @@ Hybrid. 요구사항·설계·API 명세·리뷰·QA는 Agent Team으로 진행 
    - 병합 후 각 담당자의 완료 보고를 그대로 믿지 말고, orchestrator가 직접 `git status`/`git diff`와 `docs/agent-rules/project.md`의 타입 검사·전체 테스트 명령으로 재검증한다.
    - **재검증에서 테스트가 실패하면 "이번 변경과 무관해 보인다"는 인상만으로 넘기지 않는다.** 실제 근본 원인을 확인한 뒤에만 무관하다고 결론 내린다. 특히 에러 스택/경로에 `.codex/worktrees/`가 등장하면, 정리되지 않은 다른 worktree 내부 중복 파일까지 테스트 러너가 스캔해 생긴 오염(worktree별 독립 `node_modules`로 인한 라이브러리 중복 로드 등)은 아닌지부터 확인한다. 테스트 러너 설정의 제외 목록(예: `vitest.config.ts`의 `test.exclude`)에 `.codex/worktrees/**`가 있는지도 함께 확인한다.
    - 재검증이 끝난 worktree는 `git worktree remove`로 정리한다(변경이 없던 worktree는 Codex가 자동 정리). 미커밋 변경사항이 남아있으면 먼저 병합했는지 확인 후 정리한다.
-9. **T07(코드 리뷰)과 T08(보안)** 은 T05·T06 병합·재검증 후 **병렬**로 진행한다. 둘 다 코드를 수정하지 않고 읽기 위주이므로 별도 worktree 없이 병합된 작업 브랜치에서 진행한다. 스폰 지시에 산출물 경로와 "Write로 반드시 저장"을 명시한다. security-reviewer에는 Bash가 없으므로 git 명령을 시키지 말고 검토 대상 파일 목록을 지시문에 직접 넣는다.
+9. **T07(코드 리뷰)과 T08(보안)** 은 T05·T06 병합·재검증 후 **병렬**로 진행한다. 둘 다 코드를 수정하지 않고 읽기 위주이므로 별도 worktree 없이 병합된 작업 브랜치에서 진행한다. 스폰 지시에 산출물 경로와 "Write로 반드시 저장"을 명시한다. security-reviewer에는 Bash가 없으므로 git 명령을 시키지 말고 검토 대상 파일 목록을 지시문에 직접 넣는다. T07·T08·T09 지시문에는 이번 사이클 `implementation-*.md` 경로를 넣고, 작업 전에 "리뷰 확인 필요"·"확인하지 못한 것" 절을 먼저 읽게 한다. 구현 기록이 없으면 리뷰를 시작하지 않고 해당 구현자에게 작성을 먼저 지시한다.
 9-0. **산출물 파일 확인.** T07/T08/T09 완료 알림을 받으면 해당 산출물 파일이 있는지부터 확인한다. 없으면 반환된 본문을 그 경로에 그대로 저장한 뒤 다음 단계로 진행한다.
 9-1. **orchestrator 리뷰 재검토 게이트.** T07/T08이 각각 `code-review-N.md`, `security-review-N.md`를 저장하면, orchestrator는 reviewer의 pass/rework 최종 판정 문구만 보고 넘어가지 않는다. 두 파일에 나열된 **모든 finding을 심각도와 무관하게**(Critical/High뿐 아니라 Medium/Low까지) 직접 읽고 아래 기준으로 재판단한다.
    - **타당성**: 실제 코드를 열어 finding이 사실인지 확인한다(리뷰어의 서술만으로 판단하지 않는다 - CodeRabbit 교차검토 절차와 동일한 원칙).
@@ -156,6 +156,7 @@ artifacts/task-team/
   requirements.md      ← project-manager
   design-spec.md       ← designer
   api-spec.md          ← backend-developer
+  implementation-{n}.md ← frontend-developer / backend-developer 구현 기록
   code-review-{n}.md   ← code-reviewer
   security-review-{n}.md ← security-reviewer
   qa-report-{n}.md     ← qa-engineer
