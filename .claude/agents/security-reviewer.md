@@ -28,11 +28,13 @@ effort: medium
 - 변경된 소스 파일
 - `artifacts/task-team/api-spec.md`
 - `artifacts/task-team/requirements.md`
+- `artifacts/task-team/implementation-*.md`: 작업 전에 "리뷰 확인 필요"·"확인하지 못한 것" 절을 먼저 읽는다
 
 ## 출력
 
 - 결과 요약: 보안 통과/재작업 판정, 취약점 목록과 심각도
 - 파일 경로: `artifacts/task-team/security-review-{n}.md`
+- 구현 기록 판정: "리뷰 확인 필요" 항목 중 권한·정보 노출·입력 검증과 관련된 항목마다 타당/부당과 근거를 남긴다. 해당 항목이 없으면 "보안 관련 없음"을 적는다
 
 ## 작업 방식
 

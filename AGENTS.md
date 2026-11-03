@@ -12,6 +12,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 코드·문서·Git 작업 전 현재 작업과 관련된 `docs/agent-rules/README.md` 및 해당 규칙 문서를 읽는다. 모든 작업에 적용되는 공통 작업 제약도 같은 README에 있다. 프로젝트 전용 규칙(스택·디렉터리·검증 명령)은 `docs/agent-rules/project.md`에 있으며 작업 전 함께 읽는다.
 
+문서 탐색·에이전트 위임·검증 전 영구 운영 기억인 `docs/agent-rules/usage-budget.md`를 읽고 적용한다. 전체 문맥 상속, 위임 중 메인의 중복 탐색, 문서 재열람, 중복 검증·사전 보고 없는 QA를 피한다.
+
 ## Claude-Codex 인계 계약
 
 - Claude와 Codex는 각자의 기존 Skill·Agent 흐름으로 작업한다.
