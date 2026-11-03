@@ -39,7 +39,7 @@ export const CityListTable = ({
 
   return (
     <div className="w-full overflow-x-auto rounded-lg border border-gray-200 bg-white">
-      <table className="w-full min-w-[720px] border-collapse text-left text-sm text-gray-900">
+      <table className="w-full min-w-180 border-collapse text-left text-sm text-gray-900">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
             {TABLE_HEADERS.map((header) => (
