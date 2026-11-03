@@ -25,11 +25,13 @@ developer_instructions = """
 - `artifacts/task-team/requirements.md`
 - 구현된 소스 파일
 - `artifacts/task-team/code-review-{n}.md`
+- `artifacts/task-team/implementation-*.md`: "확인하지 못한 것" 절을 검증 대상 목록에 넣는다
 
 ## 출력
 
 - 결과 요약: 통과/실패 항목, 미검증 항목, 전체 품질 판정
 - 파일 경로: `artifacts/task-team/qa-report-{n}.md`
+- 구현 기록 대조: "확인하지 못한 것" 항목마다 검증 결과(통과/실패) 또는 미검증 사유를 남긴다
 
 ## 작업 방식
 
