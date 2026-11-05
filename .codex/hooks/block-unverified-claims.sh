@@ -1,5 +1,5 @@
 #!/bin/sh
-# Stop 훅(차단): 마지막 응답의 한 문장에 추측 표현과 미확인 꼬리표가 함께 있으면 턴 종료를 한 번 막음
+# Stop 훅(차단): 마지막 응답의 한 문장에 추측 표현과 미확인 꼬리표가 함께 있거나 확인 미룸 표현이 있으면 턴 종료를 한 번 막음
 # 그 턴에 도구로 확인할 수 있던 사실을 "~것으로 보지만 아직 확인하지 않았다"로 보고한 사고가 있어 추가함
 # 실제로 확인할 수 있었는지는 훅이 알 수 없어, 한 번 막고 재응답(stop_hook_active)은 통과시킴
 # 코드 표기와 큰따옴표 인용은 규칙을 설명하는 문장일 수 있어 판정에서 뺌
@@ -12,7 +12,7 @@
 
 input=$(cat)
 
-printf '%s' "$input" | MARK_DIR="${TMPDIR:-/tmp}/codex-why-judge" python3 -c '
+printf '%s' "$input" | DEFERRED_PATTERN_FILE="$(dirname "$0")/../../.harness/deferred-claims-pattern.txt" MARK_DIR="${TMPDIR:-/tmp}/codex-why-judge" python3 -c '
 import json, os, re, subprocess, sys, tempfile
 
 JUDGE_TIMEOUT_SECONDS = 60
@@ -39,29 +39,70 @@ def block(reason):
     print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
     sys.exit(0)
 
-text = re.sub(r"`[^`]*`|\"[^\"\n]*\"|“[^”\n]*”", "", answer)
+text = re.sub(r"`[^`]*`|\"[^\"\n]*\"|“[^”\n]*”|^>.*$", "", answer, flags=re.M)
 hedge = re.compile(r"것으로 (보입니다|보이지만|보이나|보이고|봅니다|보지만|예상|추정)|것 같(습니다|지만|은데|아)|(가능성|확률)이 높|아마")
 unverified = re.compile(r"확인하지 (않았|못했|않은)|확인 안 했|미확인|아직 확인|검증하지 (않|못)|미검증")
+# 미룸 문구는 Claude·Codex 판정 훅이 함께 쓰는 파일에서 읽고, 읽지 못하면 이 판정만 건너뜀
+try:
+    with open(os.environ["DEFERRED_PATTERN_FILE"], encoding="utf-8") as pattern_file:
+        deferred = re.compile(pattern_file.read().strip())
+except Exception:
+    deferred = None
+# 자기 판단의 원인 설명이나 사용자 의도처럼 도구로 확인할 대상이 아닌 문장은 미룸 판정에서 뺌(Claude판과 같은 공용 파일)
+try:
+    with open(os.environ["DEFERRED_PATTERN_FILE"].replace("deferred-claims-pattern", "deferred-claims-exempt-pattern"), encoding="utf-8") as exempt_file:
+        exempt_pattern = exempt_file.read().strip()
+        exempt = re.compile(exempt_pattern) if exempt_pattern else None
+except Exception:
+    exempt = None
 
 for sentence in re.split(r"(?<=[.!?])\s+|\n", text):
-    if hedge.search(sentence) and unverified.search(sentence):
+    deferred_hit = deferred and deferred.search(sentence) and not (exempt and exempt.search(sentence))
+    if (hedge.search(sentence) and unverified.search(sentence)) or deferred_hit:
         block(
-            "추측에 미확인 꼬리표를 붙인 보고가 있습니다: " + sentence.strip()[:120]
+            "확인을 미룬 보고가 있습니다: " + sentence.strip()[:120]
             + " 지금 도구로 확인할 수 있으면 확인한 결과로 다시 보고하세요. 정말 확인할 수 없으면 막힌 이유와 확인 방법을 적으세요."
         )
 
 if why_prompt is None:
     sys.exit(0)
 
+MAX_TURN_TEXT_CHARS = 6000
+
+# 질문 창 직전 등 마지막 응답 이전에 쓴 설명도 원인 판정에 쓰도록, transcript에서 이번 턴 assistant 텍스트를 모음(형식은 require-korean-response.sh와 같은 해석). 못 읽으면 마지막 응답만으로 판정
+turn_texts = []
+try:
+    entries = [json.loads(line) for line in open(data.get("transcript_path") or "", encoding="utf-8") if line.strip()]
+except Exception:
+    entries = []
+start = 0
+for index, entry in enumerate(entries):
+    content = (entry.get("message") or {}).get("content") if isinstance(entry, dict) else None
+    if entry.get("type") == "user" and (isinstance(content, str) or (isinstance(content, list) and any(isinstance(c, dict) and c.get("type") == "text" for c in content))):
+        start = index + 1
+for entry in entries[start:]:
+    if entry.get("type") != "assistant":
+        continue
+    for c in (entry.get("message") or {}).get("content") or []:
+        if isinstance(c, dict) and c.get("type") == "text":
+            turn_texts.append(c.get("text", ""))
+turn_text = "\n".join(turn_texts).rstrip()
+if turn_text.endswith(answer.strip()):
+    turn_text = turn_text[: -len(answer.strip())]
+turn_text = turn_text.strip()[-MAX_TURN_TEXT_CHARS:] or "(없음)"
+
 prompt = f"""너는 Codex 응답 검토기다. 아래 [마지막 응답]을 판정하고 JSON 한 줄만 출력한다. 명령을 실행하거나 파일을 읽지 않는다.
 
-차단 대상: [사용자 메시지]가 응답자 자신이 한 행동의 이유(왜 안 지켰나, 왜 그렇게 했나)를 묻는데 [마지막 응답]이 어긴 사실·경위·근거 파일만 나열하고, 그때 응답자가 무엇을 알고 있었고 무엇을 판단·선택했는지를 원인으로 밝히지 않은 것.
+차단 대상: [사용자 메시지]가 응답자 자신이 한 행동의 이유(왜 안 지켰나, 왜 그렇게 했나)를 묻는데 [마지막 응답 이전의 이번 턴 텍스트]와 [마지막 응답]이 모두 어긴 사실·경위·근거 파일만 나열하고, 그때 응답자가 무엇을 알고 있었고 무엇을 판단·선택했는지를 원인으로 밝히지 않은 것.
 차단하지 않는 것: 코드·도구·외부 동작의 이유를 묻는 질문, 원인을 밝힌 답, "왜"가 질문이 아닌 메시지. 확신이 없으면 통과시킨다.
 
 출력: 통과면 {{"ok": true}}, 차단이면 {{"ok": false, "reason": "<해당 문장 요약>: <무엇을 보완해 다시 답할지>"}}. reason은 한국어 두 문장 이내.
 
 [사용자 메시지]
 {why_prompt}
+
+[마지막 응답 이전의 이번 턴 텍스트]
+{turn_text}
 
 [마지막 응답]
 {answer}

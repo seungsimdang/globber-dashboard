@@ -96,6 +96,11 @@
           {
             "type": "command",
             "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-manual-merge-repo.sh\""
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-answer-before-edit.sh\"",
+            "timeout": 90
           }
         ]
       },
@@ -114,6 +119,11 @@
           {
             "type": "command",
             "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/confirm-edit-on-report-request.sh\""
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-answer-before-edit.sh\"",
+            "timeout": 90
           }
         ]
       },
@@ -152,7 +162,7 @@
         ]
       },
       {
-        "matcher": "AskUserQuestion",
+        "matcher": "Edit|Write|NotebookEdit|Agent|SendMessage|AskUserQuestion",
         "hooks": [
           {
             "type": "command",
@@ -205,6 +215,23 @@
             "type": "command",
             "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/judge-unverified-claims.sh\"",
             "timeout": 90
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-answer-before-edit.sh\"",
+            "timeout": 90
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-ask-tool-for-decisions.sh\""
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-reask-after-free-text-answer.sh\" stop"
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-execution-for-declared-step.sh\""
           }
         ]
       }
