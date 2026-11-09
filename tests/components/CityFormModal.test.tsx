@@ -161,6 +161,13 @@ describe("CityFormModal - edit mode (F4)", () => {
     expect(screen.getByRole("button", { name: "저장" })).toBeInTheDocument();
   });
 
+  it("처음부터 open=true로 마운트돼도 edit 모드 폼이 city 데이터로 초기화된다", () => {
+    renderWithProviders(<CityFormModal open mode="edit" city={seoul} onOpenChange={vi.fn()} />);
+
+    expect((screen.getByLabelText(/도시명/) as HTMLInputElement).value).toBe("Seoul");
+    expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("South Korea");
+  });
+
   it("유효한 값으로 수정 제출하면 실제 updateCity를 통해 저장소가 갱신되고 모달이 닫힌다", async () => {
     const { onOpenChange } = renderEditModalOpened(seoul);
 
