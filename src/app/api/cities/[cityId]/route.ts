@@ -1,0 +1,37 @@
+import { failResponse, parseCityRequest, proxyCityApi } from "@/lib/server/cityUpstream";
+import { withSession } from "@/lib/server/withSession";
+
+type Context = RouteContext<"/api/cities/[cityId]">;
+
+// 검증된 숫자 문자열만 상류 경로에 사용함
+const parseCityId = async ({ params }: Context) => {
+  const { cityId } = await params;
+  return /^[1-9][0-9]*$/.test(cityId) ? cityId : null;
+};
+
+export const PUT = withSession(async (request: Request, context: Context) => {
+  const cityId = await parseCityId(context);
+  if (!cityId) return failResponse(400, "올바르지 않은 도시 ID입니다.");
+
+  const body: unknown = await request.json().catch(() => null);
+  const parsed = parseCityRequest(body);
+  if (!parsed.ok) return failResponse(400, parsed.message);
+
+  return proxyCityApi(`/api/v1/cities/${cityId}`, {
+    method: "PUT",
+    authenticated: true,
+    body: parsed.value,
+    expect: "object",
+  });
+});
+
+export const DELETE = withSession(async (_request: Request, context: Context) => {
+  const cityId = await parseCityId(context);
+  if (!cityId) return failResponse(400, "올바르지 않은 도시 ID입니다.");
+
+  return proxyCityApi(`/api/v1/cities/${cityId}`, {
+    method: "DELETE",
+    authenticated: true,
+    expect: "object",
+  });
+});
