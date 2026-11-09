@@ -6,7 +6,7 @@
 
 - 스택: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, TanStack Query v5, Zustand, Radix UI(`radix-ui`), CVA·`clsx`·`tailwind-merge`, Vitest·Testing Library(jsdom), pnpm
 - 구현 전 확인할 프레임워크 문서: `node_modules/next/dist/docs/` (이 저장소의 Next.js는 학습 데이터와 다를 수 있음, 규칙은 `nextjs.md`)
-- 백엔드: 실제 도시 API(dev 서버)를 Next 서버(Route Handler `src/app/api/cities*`)가 프록시한다. DB는 없고 영속 데이터는 실제 API가 가진다. 상류 계약과 내부 엔드포인트 계약은 `artifacts/task-team/api-spec.md`와 `src/docs/city-api-reference.md`가 기준이며, 확인되지 않은 서버 동작은 "확인 필요"로 표시한다. 상류 주소·토큰·테스트 계정 이메일은 서버 환경 변수(`.env.example` 참고)로만 다루고 코드·문서에 실제 값을 적지 않는다. 필수 필드·위경도·alpha-3 형식 검증은 Route Handler가 권위 있게 수행하고, 폼은 즉시 피드백용으로 같은 규칙을 검사한다.
+- 백엔드: 실제 도시 API(dev 서버)를 Next 서버(Route Handler `src/app/api/cities*`)가 프록시한다. DB는 없고 영속 데이터는 실제 API가 가진다. 상류 계약과 내부 엔드포인트 계약은 `src/docs/city-api-reference.md`가 기준이며, 확인되지 않은 서버 동작은 "확인 필요"로 표시한다. 상류 주소·토큰·테스트 계정 이메일은 서버 환경 변수(`.env.example` 참고)로만 다루고 코드·문서에 실제 값을 적지 않는다. 필수 필드·위경도·alpha-3 형식 검증은 Route Handler가 권위 있게 수행하고, 폼은 즉시 피드백용으로 같은 규칙을 검사한다.
 - 인증: 환경 변수 기반 단일 계정 로그인(`src/lib/session.ts`, `src/proxy.ts`). 상세는 `nextjs.md` 3번
 
 ## 디렉터리
