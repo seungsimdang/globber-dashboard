@@ -4,7 +4,7 @@
 - 이전 담당: Claude (task-team-orchestrator 세션)
 - 다음 담당: 사용자 지정 (Claude 또는 Codex)
 - 현재 단계: 구현 완료, 검토 전
-- 상태: 사람 승인 대기 (구현 변경 커밋·push 승인 전)
+- 상태: 구현 커밋 완료(`3d1ac27`, `54d0fca`, `a542d61`, 미푸시). 리뷰·QA는 3차와 함께 진행 예정, 후속 상태는 `artifacts/work/city-input-assist/STATUS.md`
 
 ## 완료된 일
 
