@@ -79,3 +79,66 @@
 ## Bug Team 피드백 반영 필수
 
 없음 (`artifacts/bug-team/`에 postmortem 파일 없음).
+
+---
+
+# T01 (2차) - 입력 정리: 운영·개발 서버 분리 관리
+
+## 사용자 요청 원문
+
+> 이 대시보드는 개발 서버와 아무 관련이 없는데 무슨소리임?
+
+> 운영/개발 둘 다 관리할 수 있도록 별도 메뉴/탭 등으로 분리해
+
+> ip 주소 사용하되, 운영/개발 서버 주소를 환경변수로 동적으로 관리할 수 있도록 해
+
+## 사용자 결정 (2026-11-09, 질문 창 답변)
+
+| 항목 | 결정 |
+| --- | --- |
+| 작업 위치 | PR #19(`feature/real-city-api`)에 이어서 커밋. 이 문서와 기존 산출물은 이어서 보완 |
+| 화면 분리 | 한 화면(`/cities`) 안의 탭으로 운영·개발 전환. 주소는 나누지 않음 |
+| 운영 쓰기 | 백엔드가 쓰기용 인증 수단을 주기 전까지 운영 탭의 추가·수정·삭제 버튼은 비활성화하고 안내 문구를 보여 준다 |
+| 개발 서버 주소 | IP 주소 서버(`http://54.180.101.234:8080` 계열) 사용. 실제 값은 문서·코드에 적지 않고 환경 변수로만 둔다 |
+| 주소 관리 | 운영·개발 서버 주소를 각각 환경 변수로 관리해 코드 수정 없이 바꿀 수 있게 한다 |
+
+## 확인된 사실 (orchestrator가 조회 요청으로 확인, 2026-11-09)
+
+| 상류 기준 주소 | 도시 목록 경로 | 결과 |
+| --- | --- | --- |
+| 운영 `https://globber.world/api` | `{base}/api/v1/cities/all` | 200, 4,204개 |
+| 개발(도메인) `https://dev.globber.world/api` | `{base}/api/v1/cities/all` | 200, 3,791개 |
+| 개발(IP) `http://54.180.101.234:8080` | `{base}/api/v1/cities/all` | 200, 3,791개 |
+
+- 1차 사이클 화면의 3,791개는 개발 서버 데이터였다. 운영 데이터는 4,204개다.
+- 현재 코드는 `CITY_API_BASE_URL` 하나만 쓰고, 목록 경로를 `{base}/api/v1/cities/all`, 토큰 발급을 `{base}/dev/test-login?email=`로 만든다. 운영 주소는 끝에 `/api`가 붙어야 한다(`https://globber.world/api/v1/cities/all`은 404).
+- 토큰 발급(test-login, 이메일 없이 POST):
+  - 개발(IP) `/dev/test-login` → 400 `필수 요청 값이 누락되었습니다: email` (도달)
+  - 개발(도메인) `/api/dev/test-login` → 404 HTML, `/api/api/dev/test-login` → 404 JSON (도달 불가)
+  - 운영 `https://globber.world/api/dev/test-login` → 404 (운영에는 없음)
+- 따라서 쓰기는 개발(IP)에서만 가능하다. 운영 쓰기는 백엔드가 별도 인증 수단을 제공해야 한다.
+
+## 확인 필요
+
+1. 개발(IP)과 개발(도메인)이 같은 서버인지 (도시 수만 같음)
+2. 1차 사이클에서 이월된 실서버 쓰기 동작(토큰 발급·401 재시도·중복/없는 id 응답·토큰 만료·`Bearer` 접두사)
+3. 운영 쓰기용 인증 수단의 형태와 제공 시점 (백엔드 요청 필요)
+4. 배포 환경(Vercel)의 환경 변수 이름 변경에 따른 재설정 절차
+
+## 영향 범위 (현재 코드 기준, 판단 없이 나열)
+
+- `src/lib/server/cityApiToken.ts`, `src/lib/server/cityUpstream.ts`, `src/app/api/cities/route.ts`, `src/app/api/cities/[cityId]/route.ts`
+- `src/services/cityService.ts`, `src/hooks/useCities.ts`, `src/hooks/useCityMutations.ts`, `src/lib/react-query/query-keys.ts`
+- `src/components/cities/*`, `src/app/cities/*`
+- `.env.example`, `src/docs/city-api-reference.md`, `docs/agent-rules/project.md`(백엔드 설명이 dev 서버 기준)
+- `tests/` 아래 서버 모듈·Route Handler·서비스·훅·컴포넌트 테스트
+
+## 승인 지점
+
+- T02 완료 후 사용자 확인 게이트
+- 실제 서버에 데이터를 바꾸는 요청은 사용자 승인 없이 보내지 않는다
+- 커밋·푸시는 사용자 승인 후
+
+## Bug Team 피드백 반영 필수
+
+없음 (`artifacts/bug-team/`에 postmortem 파일 없음).
