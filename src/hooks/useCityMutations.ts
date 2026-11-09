@@ -16,7 +16,14 @@ const useAssertNotDuplicate = () => {
   return (params: CityRequest, excludeId?: string) => {
     const cities = queryClient.getQueryData(citiesQueryOptions().queryKey);
 
-    if (cities && findDuplicateCity(cities, params, excludeId)) {
+    if (!cities) return;
+
+    // 수정 시 도시명·국가명이 원본과 같으면 검사 생략
+    const original = cities.find((city) => city.id === excludeId);
+
+    if (original && findDuplicateCity([original], params)) return;
+
+    if (findDuplicateCity(cities, params, excludeId)) {
       throw new Error(DUPLICATE_CITY_MESSAGE);
     }
   };
