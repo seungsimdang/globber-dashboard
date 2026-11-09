@@ -35,6 +35,13 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 // "invalid"는 형식 오류, "mismatch"는 요청 국가와 다르거나 국가 코드가 없는 후보
 function toCandidate(item: unknown, alpha2: string): GeocodeCandidate | "invalid" | "mismatch" {
   if (!isRecord(item)) return "invalid";
+  if (
+    [item.lat, item.lon].some(
+      (value) =>
+        (typeof value !== "string" && typeof value !== "number") ||
+        (typeof value === "string" && value.trim() === ""),
+    )
+  ) return "invalid";
   const lat = Number(item.lat);
   const lng = Number(item.lon);
   if (!Number.isFinite(lat) || Math.abs(lat) > 90) return "invalid";
