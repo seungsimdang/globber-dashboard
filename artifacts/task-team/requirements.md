@@ -29,8 +29,6 @@
 | B-8 토큰 보관 | Next 서버 모듈 메모리에 보관, 없거나 401이면 재발급 |
 | B-9 API 참조 문서 | `src/docs/city-api-reference.md`를 실제 Swagger 스펙 기준으로 갱신 |
 | 승인 | 2026-11-09 사용자 승인. T03/T04 진행. OpenAPI 원본 스냅샷: `artifacts/task-team/openapi-snapshot.json` |
-| B-9 API 참조 문서 | `src/docs/city-api-reference.md`를 실제 Swagger 스펙 기준으로 갱신 |
-| 승인 | 2026-11-09 사용자 승인, T03/T04 진행 |
 
 ### 범위 밖 (사용자가 요청하지 않음)
 
