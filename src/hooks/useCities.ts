@@ -1,26 +1,22 @@
 "use client";
 
+import { useMemo } from "react";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/react-query/query-keys";
-import { getCities, searchCities } from "@/services/cityService";
-import type { City } from "@/types/city";
+import { getCities } from "@/services/cityService";
+import { filterCities } from "@/utils/cityFilter";
 
-/**
- * 도시 목록 조회 쿼리 옵션 팩토리.
- *
- * `keyword`가 비어 있으면(공백 trim 후) 전체 목록(`getCities`)을, 그렇지 않으면 검색
- * (`searchCities`)을 호출한다. 컴포넌트에서 인라인 `queryKey`/`queryFn`을 만들지 않도록
- * 이 팩토리를 통해서만 쿼리를 구성한다.
- */
-export const citiesQueryOptions = (keyword: string) => {
-  const trimmedKeyword = keyword.trim();
-
-  return queryOptions({
-    queryKey: queryKeys.cities.list(trimmedKeyword),
-    queryFn: (): Promise<City[]> =>
-      trimmedKeyword ? searchCities(trimmedKeyword) : getCities(),
+// 전체 목록 조회 쿼리 옵션, 검색은 같은 캐시를 클라이언트에서 필터링
+export const citiesQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.cities.list,
+    queryFn: getCities,
   });
-};
 
-/** 도시 목록/검색 결과를 조회하는 훅. */
-export const useCities = (keyword: string) => useQuery(citiesQueryOptions(keyword));
+/** 도시 목록 조회, cities는 검색어로 필터링한 결과이고 totalCount는 전체 건수 */
+export const useCities = (keyword: string) => {
+  const { data, ...query } = useQuery(citiesQueryOptions());
+  const cities = useMemo(() => filterCities(data ?? [], keyword), [data, keyword]);
+
+  return { ...query, cities, totalCount: data?.length ?? 0 };
+};

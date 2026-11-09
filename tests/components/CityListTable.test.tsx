@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CityListTable } from "@/components/cities/CityListTable";
 import type { City } from "@/types/city";
@@ -11,7 +11,7 @@ const sampleCities: City[] = [
     flag: "🇰🇷",
     lat: 37.5665,
     lng: 126.978,
-    countryCode: "KR",
+    countryCode: "KOR",
   },
   {
     id: "2",
@@ -20,9 +20,34 @@ const sampleCities: City[] = [
     flag: "🇰🇷",
     lat: 35.1796,
     lng: 129.0756,
-    countryCode: "KR",
+    countryCode: "KOR",
   },
 ];
+
+// jsdom은 레이아웃이 없어 스크롤 컨테이너 크기가 0이므로 가상 스크롤이 행을 그릴 수 있게 크기를 지정
+const SIZE_PROPS = {
+  clientHeight: 600,
+  clientWidth: 800,
+  offsetHeight: 53,
+  offsetWidth: 800,
+} as const;
+const originalDescriptors = Object.entries(SIZE_PROPS).map(([name]) => [
+  name,
+  Object.getOwnPropertyDescriptor(Element.prototype, name) ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, name),
+] as const);
+
+beforeAll(() => {
+  for (const [name, value] of Object.entries(SIZE_PROPS)) {
+    Object.defineProperty(HTMLElement.prototype, name, { configurable: true, value });
+  }
+});
+
+afterAll(() => {
+  for (const [name, descriptor] of originalDescriptors) {
+    if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor);
+    else delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name];
+  }
+});
 
 const baseProps = {
   keyword: "",

@@ -6,8 +6,13 @@ import { Dialog } from "@/components/common/Dialog";
 import { Input } from "@/components/common/Input";
 import { Label } from "@/components/common/Label";
 import { useToast } from "@/components/common/Toast";
-import { useAddCityMutation, useUpdateCityMutation } from "@/hooks/useCityMutations";
+import {
+  DUPLICATE_CITY_MESSAGE,
+  useAddCityMutation,
+  useUpdateCityMutation,
+} from "@/hooks/useCityMutations";
 import type { City } from "@/types/city";
+import { getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
 
 export type CityFormMode = "create" | "edit";
 
@@ -45,29 +50,23 @@ const toFormValues = (city: City): FormValues => ({
   lng: String(city.lng),
 });
 
-const COUNTRY_CODE_PATTERN = /^[A-Za-z]{2}$/;
+const COUNTRY_CODE_PATTERN = /^[A-Za-z]{3}$/;
 const NOT_FOUND_MESSAGE = "대상을 찾을 수 없습니다.";
-const DUPLICATE_MESSAGE = "이미 등록된 도시입니다.";
-const NAME_MAX_LENGTH = 100;
 
-/** design-spec.md §4 필드별 유효성 검사 규칙. 제출 시점에 전체 필드를 한 번에 검사한다. */
+/** 필드별 유효성 검사 규칙. 제출 시점에 전체 필드를 한 번에 검사한다. */
 const validate = (values: FormValues): FieldErrors => {
   const errors: FieldErrors = {};
 
   if (!values.cityName.trim()) {
     errors.cityName = "도시명을 입력해주세요";
-  } else if (values.cityName.trim().length > NAME_MAX_LENGTH) {
-    errors.cityName = `도시명은 ${NAME_MAX_LENGTH}자 이하여야 합니다`;
   }
 
   if (!values.countryName.trim()) {
     errors.countryName = "국가명을 입력해주세요";
-  } else if (values.countryName.trim().length > NAME_MAX_LENGTH) {
-    errors.countryName = `국가명은 ${NAME_MAX_LENGTH}자 이하여야 합니다`;
   }
 
   if (!COUNTRY_CODE_PATTERN.test(values.countryCode.trim())) {
-    errors.countryCode = "국가코드는 영문 2자(예: KR)로 입력해주세요";
+    errors.countryCode = "국가코드는 영문 3자(예: KOR)로 입력해주세요";
   }
 
   const lat = Number(values.lat);
@@ -85,9 +84,8 @@ const validate = (values: FormValues): FieldErrors => {
 
 /**
  * 도시 추가/수정 겸용 모달. `mode`에 따라 제목/제출 버튼 문구와 초기값이 달라진다.
- * 필드 검증 실패는 인라인 에러로, 서버(목업) 측 중복 도시명 거부는 폼 상단 배너로 표시한다
- * (design-spec.md §4). 수정 대상이 이미 사라진 경우(대상 없음)는 폼을 닫고 Toast로만
- * 안내한다(design-spec.md §3.5).
+ * 필드 검증 실패는 인라인 에러로, 중복 도시와 서버 오류는 폼 상단 배너로 표시한다.
+ * 수정 대상이 이미 사라진 경우(대상 없음)는 폼을 닫고 Toast로만 안내한다.
  */
 export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalProps) => {
   const { showToast } = useToast();
@@ -116,7 +114,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
   }
 
   const isSubmitting = addCityMutation.isPending || updateCityMutation.isPending;
-  const isDuplicateError = formError === DUPLICATE_MESSAGE;
+  const isDuplicateError = formError === DUPLICATE_CITY_MESSAGE;
 
   const handleChange =
     (field: keyof FormValues) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -167,7 +165,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
           onOpenChange(false);
         },
         onError: (error: Error) => {
-          setFormError(error.message);
+          setFormError(getErrorMessage(error, "write"));
         },
       });
       return;
@@ -183,12 +181,12 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
           onOpenChange(false);
         },
         onError: (error: Error) => {
-          if (error.message === NOT_FOUND_MESSAGE) {
-            showToast({ title: error.message, variant: "error" });
+          if (isNotFoundError(error)) {
+            showToast({ title: NOT_FOUND_MESSAGE, variant: "error" });
             onOpenChange(false);
             return;
           }
-          setFormError(error.message);
+          setFormError(getErrorMessage(error, "write"));
         },
       },
     );
@@ -223,7 +221,6 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
             value={values.cityName}
             onChange={handleChange("cityName")}
             onBlur={handleBlur("cityName")}
-            maxLength={NAME_MAX_LENGTH}
             hasError={Boolean(errors.cityName) || isDuplicateError}
             aria-describedby={errors.cityName ? "cityName-error" : undefined}
           />
@@ -243,7 +240,6 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
             value={values.countryName}
             onChange={handleChange("countryName")}
             onBlur={handleBlur("countryName")}
-            maxLength={NAME_MAX_LENGTH}
             hasError={Boolean(errors.countryName) || isDuplicateError}
             aria-describedby={errors.countryName ? "countryName-error" : undefined}
           />
@@ -263,7 +259,8 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
             value={values.countryCode}
             onChange={handleChange("countryCode")}
             onBlur={handleBlur("countryCode")}
-            maxLength={2}
+            maxLength={3}
+            placeholder="예: KOR"
             hasError={Boolean(errors.countryCode)}
             aria-describedby={errors.countryCode ? "countryCode-error" : undefined}
           />

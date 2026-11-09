@@ -5,6 +5,9 @@ import { Button } from "@/components/common/Button";
 import { useToast } from "@/components/common/Toast";
 import { useDeleteCityMutation } from "@/hooks/useCityMutations";
 import type { City } from "@/types/city";
+import { getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
+
+const NOT_FOUND_MESSAGE = "대상을 찾을 수 없습니다.";
 
 type DeleteConfirmDialogProps = {
   /** 삭제 대상 도시. null이면 다이얼로그가 닫힌 상태다. */
@@ -13,7 +16,7 @@ type DeleteConfirmDialogProps = {
 };
 
 /**
- * 삭제 확인 다이얼로그(design-spec.md §5). `AlertDialogAction`은 Radix 내부적으로
+ * 삭제 확인 다이얼로그. `AlertDialogAction`은 Radix 내부적으로
  * `Dialog.Close`이므로 클릭 즉시 다이얼로그를 닫아버려 "삭제 중 로딩 유지" 요구사항과
  * 충돌한다 - 그래서 삭제 버튼은 일반 `Button`으로 만들고, mutation이 끝난 뒤 우리가
  * 직접 `onOpenChange(false)`를 호출해 닫는다.
@@ -31,8 +34,14 @@ export const DeleteConfirmDialog = ({ city, onOpenChange }: DeleteConfirmDialogP
         onOpenChange(false);
       },
       onError: (error: Error) => {
-        showToast({ title: error.message, variant: "error" });
-        onOpenChange(false);
+        const notFound = isNotFoundError(error);
+
+        showToast({
+          title: notFound ? NOT_FOUND_MESSAGE : getErrorMessage(error, "delete"),
+          variant: "error",
+        });
+        // 대상 없음만 닫고, 네트워크·5xx·인증 오류는 다이얼로그를 열어 둬 재시도할 수 있게 함
+        if (notFound) onOpenChange(false);
       },
     });
   };

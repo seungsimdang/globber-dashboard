@@ -12,7 +12,7 @@ type SearchInputProps = {
 };
 
 /**
- * 도시명 검색 입력. 입력값을 debounce(300ms)한 뒤 trim된 키워드로 `onSearch`를 호출한다.
+ * 도시명·국가명 검색 입력. 입력값을 debounce(300ms)한 뒤 trim된 키워드로 `onSearch`를 호출한다.
  * 검색어가 있을 때만 클리어 버튼을 노출한다.
  */
 export const SearchInput = ({ onSearch }: SearchInputProps) => {
@@ -40,7 +40,7 @@ export const SearchInput = ({ onSearch }: SearchInputProps) => {
         <Input
           id={inputId}
           type="text"
-          placeholder="도시명으로 검색"
+          placeholder="도시명 또는 국가명으로 검색"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           className="pl-9 pr-9"
