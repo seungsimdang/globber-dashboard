@@ -14,6 +14,24 @@
 - 브랜치는 `feature/real-city-api`(main 분기). 관리자 인증 요청 문서는 만들지 않는다.
 - 데이터를 바꾸는 요청(POST/PUT/DELETE 성공 경로)은 사용자 승인 없이 실제 서버에 보내지 않는다.
 
+### T02 게이트 결정 (2026-11-09, 사용자 답변·best practice 지정)
+
+§6 B표의 해당 항목과 본문의 제안 기본값보다 이 결정이 우선한다.
+
+| 항목 | 결정 |
+| --- | --- |
+| B-1 목록·검색 | `/cities/all` 전체 목록을 받아 클라이언트에서 필터링한다. 서버 검색 API(`/cities?keyword=`)는 쓰지 않는다. F-03은 클라이언트 필터링으로 바뀌고 20개 제한 안내는 필요 없다 |
+| B-2 목업 | `src/mocks/*`와 `tests/mocks/mockCities.test.ts` 삭제. 서비스 테스트는 모킹된 fetch 기준으로 재작성. `react-query.md`·`project.md`·`project-structure.md`의 목업 서술 갱신 |
+| B-3 조회 토큰 | 모든 경로는 대시보드 세션 필수. 조회는 토큰 없이, 쓰기만 토큰 사용 |
+| B-4 국기 매핑 | ISO 3166-1 전체 alpha-3 → 국기 변환 |
+| B-5 100자 제한 | 클라이언트·서비스의 이름 100자 제한 제거. 서버 400 메시지 표시로 대응 |
+| B-6 중복 사전 검사 | 추가·수정 전 클라이언트가 보유한 전체 목록으로 도시명+국가명 중복을 사전 검사(수정은 자기 자신 제외). 서버 에러도 그대로 표시 |
+| B-8 토큰 보관 | Next 서버 모듈 메모리에 보관, 없거나 401이면 재발급 |
+| B-9 API 참조 문서 | `src/docs/city-api-reference.md`를 실제 Swagger 스펙 기준으로 갱신 |
+| 승인 | 2026-11-09 사용자 승인. T03/T04 진행. OpenAPI 원본 스냅샷: `artifacts/task-team/openapi-snapshot.json` |
+| B-9 API 참조 문서 | `src/docs/city-api-reference.md`를 실제 Swagger 스펙 기준으로 갱신 |
+| 승인 | 2026-11-09 사용자 승인, T03/T04 진행 |
+
 ### 범위 밖 (사용자가 요청하지 않음)
 
 - 인기 여행지(`/favorites`), 단건 조회(`/findCity`) 기능
@@ -38,7 +56,7 @@
 | --- | --- | --- |
 | F-01 | 서버 경유 계층 (브라우저 -> Next 서버 -> 실제 API) | P0 |
 | F-02 | 도시 전체 목록 조회 (`GET /api/v1/cities/all`) | P0 |
-| F-03 | 도시 검색 (`GET /api/v1/cities?keyword=`) | P0 |
+| F-03 | 도시 검색 (B-1 결정: 전체 목록 클라이언트 필터링) | P0 |
 | F-04 | 서버 측 토큰 관리 (발급·보관·401 재발급) | P0 |
 | F-05 | 도시 추가 (`POST /api/v1/cities`) | P1 |
 | F-06 | 도시 수정 (`PUT /api/v1/cities/{cityId}`) | P1 |
