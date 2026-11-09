@@ -15,8 +15,7 @@ Globber 도시 데이터 관리용 Next.js 16 App Router 어드민 대시보드.
 | `src/lib/` | `apiClient.ts`(fetch 래퍼), `react-query/query-keys.ts` |
 | `src/hooks/` | 커스텀 훅. `useCities.ts`, `useCityMutations.ts` 등 |
 | `src/types/` | 도메인별 타입. `city.ts`가 API 요청/응답 계약의 단일 소스 |
-| `src/schemas/` | Zod 스키마 (폼 유효성 검사) |
-| `src/constants/`, `src/utils/` | 공용 상수 / 클라이언트 유틸(`cn.ts`) |
+| `src/utils/` | 클라이언트 유틸(`cn.ts`, `countryFlagMapping.ts`) |
 | `src/docs/city-api-reference.md` | 17th-team1-client의 실제 도시 API 계약 참조 문서 |
 
 ## 핵심 규칙
