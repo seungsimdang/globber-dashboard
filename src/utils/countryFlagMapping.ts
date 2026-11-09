@@ -1,57 +1,58 @@
-/**
- * ISO 3166-1 alpha-2 국가코드 → 국기 이모지 매핑.
- *
- * 원본 저장소(17th-team1-client)의 `COUNTRY_CODE_TO_FLAG` 전체 테이블을 그대로 옮기지 않고,
- * 이 대시보드의 목업 시드 데이터와 자주 쓰이는 주요 국가만 축소해 담는다. 매핑에 없는
- * 국가코드는 기본 아이콘(흰 깃발)으로 대체하며, 이 경우에도 도시 등록/수정 자체는 막지 않는다.
- */
-const COUNTRY_CODE_TO_FLAG: Record<string, string> = {
-  KR: "🇰🇷",
-  US: "🇺🇸",
-  JP: "🇯🇵",
-  CN: "🇨🇳",
-  GB: "🇬🇧",
-  FR: "🇫🇷",
-  DE: "🇩🇪",
-  IT: "🇮🇹",
-  ES: "🇪🇸",
-  CA: "🇨🇦",
-  AU: "🇦🇺",
-  BR: "🇧🇷",
-  IN: "🇮🇳",
-  RU: "🇷🇺",
-  MX: "🇲🇽",
-  NL: "🇳🇱",
-  CH: "🇨🇭",
-  SE: "🇸🇪",
-  NO: "🇳🇴",
-  FI: "🇫🇮",
-  DK: "🇩🇰",
-  PT: "🇵🇹",
-  GR: "🇬🇷",
-  TR: "🇹🇷",
-  TH: "🇹🇭",
-  VN: "🇻🇳",
-  SG: "🇸🇬",
-  ID: "🇮🇩",
-  PH: "🇵🇭",
-  AE: "🇦🇪",
+// ISO 3166-1 alpha-3 -> alpha-2 전체 표, 국기 이모지는 alpha-2에서 계산
+const ALPHA3_TO_ALPHA2: Record<string, string> = {
+  ABW: "AW", AFG: "AF", AGO: "AO", AIA: "AI", ALA: "AX", ALB: "AL", AND: "AD", ARE: "AE",
+  ARG: "AR", ARM: "AM", ASM: "AS", ATA: "AQ", ATF: "TF", ATG: "AG", AUS: "AU", AUT: "AT",
+  AZE: "AZ", BDI: "BI", BEL: "BE", BEN: "BJ", BES: "BQ", BFA: "BF", BGD: "BD", BGR: "BG",
+  BHR: "BH", BHS: "BS", BIH: "BA", BLM: "BL", BLR: "BY", BLZ: "BZ", BMU: "BM", BOL: "BO",
+  BRA: "BR", BRB: "BB", BRN: "BN", BTN: "BT", BVT: "BV", BWA: "BW", CAF: "CF", CAN: "CA",
+  CCK: "CC", CHE: "CH", CHL: "CL", CHN: "CN", CIV: "CI", CMR: "CM", COD: "CD", COG: "CG",
+  COK: "CK", COL: "CO", COM: "KM", CPV: "CV", CRI: "CR", CUB: "CU", CUW: "CW", CXR: "CX",
+  CYM: "KY", CYP: "CY", CZE: "CZ", DEU: "DE", DJI: "DJ", DMA: "DM", DNK: "DK", DOM: "DO",
+  DZA: "DZ", ECU: "EC", EGY: "EG", ERI: "ER", ESH: "EH", ESP: "ES", EST: "EE", ETH: "ET",
+  FIN: "FI", FJI: "FJ", FLK: "FK", FRA: "FR", FRO: "FO", FSM: "FM", GAB: "GA", GBR: "GB",
+  GEO: "GE", GGY: "GG", GHA: "GH", GIB: "GI", GIN: "GN", GLP: "GP", GMB: "GM", GNB: "GW",
+  GNQ: "GQ", GRC: "GR", GRD: "GD", GRL: "GL", GTM: "GT", GUF: "GF", GUM: "GU", GUY: "GY",
+  HKG: "HK", HMD: "HM", HND: "HN", HRV: "HR", HTI: "HT", HUN: "HU", IDN: "ID", IMN: "IM",
+  IND: "IN", IOT: "IO", IRL: "IE", IRN: "IR", IRQ: "IQ", ISL: "IS", ISR: "IL", ITA: "IT",
+  JAM: "JM", JEY: "JE", JOR: "JO", JPN: "JP", KAZ: "KZ", KEN: "KE", KGZ: "KG", KHM: "KH",
+  KIR: "KI", KNA: "KN", KOR: "KR", KWT: "KW", LAO: "LA", LBN: "LB", LBR: "LR", LBY: "LY",
+  LCA: "LC", LIE: "LI", LKA: "LK", LSO: "LS", LTU: "LT", LUX: "LU", LVA: "LV", MAC: "MO",
+  MAF: "MF", MAR: "MA", MCO: "MC", MDA: "MD", MDG: "MG", MDV: "MV", MEX: "MX", MHL: "MH",
+  MKD: "MK", MLI: "ML", MLT: "MT", MMR: "MM", MNE: "ME", MNG: "MN", MNP: "MP", MOZ: "MZ",
+  MRT: "MR", MSR: "MS", MTQ: "MQ", MUS: "MU", MWI: "MW", MYS: "MY", MYT: "YT", NAM: "NA",
+  NCL: "NC", NER: "NE", NFK: "NF", NGA: "NG", NIC: "NI", NIU: "NU", NLD: "NL", NOR: "NO",
+  NPL: "NP", NRU: "NR", NZL: "NZ", OMN: "OM", PAK: "PK", PAN: "PA", PCN: "PN", PER: "PE",
+  PHL: "PH", PLW: "PW", PNG: "PG", POL: "PL", PRI: "PR", PRK: "KP", PRT: "PT", PRY: "PY",
+  PSE: "PS", PYF: "PF", QAT: "QA", REU: "RE", ROU: "RO", RUS: "RU", RWA: "RW", SAU: "SA",
+  SDN: "SD", SEN: "SN", SGP: "SG", SGS: "GS", SHN: "SH", SJM: "SJ", SLB: "SB", SLE: "SL",
+  SLV: "SV", SMR: "SM", SOM: "SO", SPM: "PM", SRB: "RS", SSD: "SS", STP: "ST", SUR: "SR",
+  SVK: "SK", SVN: "SI", SWE: "SE", SWZ: "SZ", SXM: "SX", SYC: "SC", SYR: "SY", TCA: "TC",
+  TCD: "TD", TGO: "TG", THA: "TH", TJK: "TJ", TKL: "TK", TKM: "TM", TLS: "TL", TON: "TO",
+  TTO: "TT", TUN: "TN", TUR: "TR", TUV: "TV", TWN: "TW", TZA: "TZ", UGA: "UG", UKR: "UA",
+  UMI: "UM", URY: "UY", USA: "US", UZB: "UZ", VAT: "VA", VCT: "VC", VEN: "VE", VGB: "VG",
+  VIR: "VI", VNM: "VN", VUT: "VU", WLF: "WF", WSM: "WS", YEM: "YE", ZAF: "ZA", ZMB: "ZM",
+  ZWE: "ZW",
 };
 
-/** 매핑에 없는 국가코드일 때 사용하는 기본 아이콘(흰 깃발). */
+/** alpha-3 국가코드(대소문자 무관)를 alpha-2로 변환, 매핑에 없으면 undefined */
+export const toAlpha2 = (countryCode: string): string | undefined =>
+  ALPHA3_TO_ALPHA2[countryCode.trim().toUpperCase()];
+
+/** 매핑에 있는 alpha-3 국가코드 전체 목록 */
+export const ALPHA3_CODES = Object.keys(ALPHA3_TO_ALPHA2);
+
+/** 매핑에 없는 국가코드일 때 쓰는 기본 아이콘(흰 깃발) */
 const FALLBACK_FLAG = "🏳️";
 
-/**
- * 국가코드를 국기 이모지로 변환한다. 매핑에 없으면 fallback을 반환한다.
- *
- * @param countryCode - ISO 3166-1 alpha-2 형식의 국가코드(대소문자 무관)
- * @returns 국기 이모지 문자열, 매핑 실패 시 기본 아이콘
- * @example
- * const flag = getCountryFlag("kr"); // "🇰🇷"
- * const unknown = getCountryFlag("ZZ"); // "🏳️" (fallback)
- */
-export const getCountryFlag = (countryCode: string): string => {
-  const normalized = countryCode.trim().toUpperCase();
+const REGIONAL_INDICATOR_A = 0x1f1e6;
 
-  return COUNTRY_CODE_TO_FLAG[normalized] ?? FALLBACK_FLAG;
+/** alpha-3 국가코드(대소문자 무관)를 국기 이모지로 변환, 매핑에 없으면 기본 아이콘 반환 */
+export const getCountryFlag = (countryCode: string): string => {
+  const alpha2 = toAlpha2(countryCode);
+
+  if (!alpha2) return FALLBACK_FLAG;
+
+  return String.fromCodePoint(
+    ...[...alpha2].map((char) => REGIONAL_INDICATOR_A + char.charCodeAt(0) - 65),
+  );
 };

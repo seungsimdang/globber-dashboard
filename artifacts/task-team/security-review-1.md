@@ -1,81 +1,79 @@
-# Security Review 1 — City CRUD (mock service layer)
+# T08 보안 리뷰 1 - 실제 도시 API 연동
 
-## 결과 요약
+## 판정
 
-**판정: 통과 (No Critical/High)**
+배포 승인. Critical 0, High 0, Medium 1, Low 4, Info 2. Medium 1건은 설계 확인 사항이고 코드 결함이 아니다. orchestrator의 9-1 재검토 게이트에서 Medium/Low의 재작업 여부를 별도로 결정한다.
 
-리뷰 대상 파일에서 Critical/High 등급 취약점은 발견되지 않았다. 이 앱은 요구사항(§4, requirements.md:134)에 따라 인증/인가를 명시적으로 범위 밖으로 두고 있고, 실제 네트워크 호출이나 DB가 없는 인메모리 mock이므로 SQL injection, SSRF, 인증 우회 등은 해당 사항 없음(N/A)으로 처리한다. Medium/Low 등급으로 몇 가지 개선 권고 사항이 있으며, 특히 **실제 API 전환 시 반드시 함께 다뤄야 할 항목**을 별도로 정리했다.
+검토 범위: 지시문에 열거된 서버·클라이언트·문서 파일을 읽었다. 정적 코드 리뷰만 했고, 실제 상류 서버 호출·`pnpm build`·`pnpm audit`는 하지 않았다(요청 제약).
 
-- Critical: 0건
-- High: 0건
-- Medium: 3건
-- Low: 3건
-- N/A (해당 없음, 근거와 함께 명시): 인증/인가, SQL injection, SSRF, CSRF, 시크릿 노출
+## 확인된 사실 (통과 항목)
 
----
+1. 세션 강제: `src/app/api/cities/route.ts:4,12`(GET, POST)와 `[cityId]/route.ts:12,28`(PUT, DELETE) 4개 핸들러 모두 `withSession`으로 감싸 있다. `withSession.ts:10-11`이 `getSession()`(HMAC 서명 + 7일 만료 검증, `session.ts:23-57`) 실패 시 401을 반환한다. `src/proxy.ts:28` matcher가 `api`를 제외하므로 이 래퍼가 유일한 방어선이며 누락된 export는 없다.
+2. 클라이언트 번들 유출 없음: `src/lib/server`를 import하는 파일은 두 route 파일뿐이다(Grep 확인). `"use client"` 파일 중 import하는 것은 없다. `CITY_API_*`는 `src/lib/server/cityApiToken.ts` 외에서 읽지 않고 `NEXT_PUBLIC_` 접두어도 없다. `cityUpstream.ts`가 `@/types/city`에서 가져오는 것은 type import뿐이다.
+3. 로그·응답 유출 없음: `src/app`, `src/lib/server` 어디에도 `console` 호출이 없고, 응답 메시지는 고정 문자열이거나 상류 `data` 문자열(500자 절단)뿐이다. 설정 누락 메시지(`cityApiToken.ts:12,22`)는 값이 아니라 항목 이름만 말한다. 토큰·이메일·주소는 응답에 들어가지 않는다.
+4. 입력 검증: `cityId`는 `/^[1-9][0-9]*$/`(`[cityId]/route.ts:9`)로 숫자만 통과하며 `../`, `%2e%2e`(디코딩 후 검사), 개행, 쿼리 문자가 모두 걸러진다. body는 `parseCityRequest`(`cityUpstream.ts:28-67`)가 5개 필드를 구조분해해 새 객체로 재구성하므로 추가 필드(mass assignment)는 상류로 가지 않는다. 배열·null·비객체 거부, lat/lng는 `typeof number` + `isFinite` + 범위, countryCode는 trim·대문자 후 `^[A-Z]{3}$`.
+5. SSRF·경로 조작 없음: 상류 URL은 `환경변수 base + 고정 경로 문자열 (+ 검증된 숫자 cityId)`(`cityUpstream.ts:93`, route 파일)로만 만들어진다. 사용자 입력이 호스트·스킴·쿼리에 들어가는 경로가 없다. 토큰 발급 URL의 email은 환경변수이며 `encodeURIComponent` 처리(`cityApiToken.ts:33`).
+6. 토큰 발급: 동시 요청은 `inflight` Promise로 합쳐진다(`cityApiToken.ts:53-60`). 401 재시도는 정확히 1회이며 재시도도 401이면 `UpstreamAuthError`로 종료(`:76-77`), 루프 없음. 다른 요청이 이미 갱신한 토큰을 비우지 않도록 `accessToken === used` 비교(`:74`)를 한다. 모든 상류 fetch에 10초 타임아웃과 `cache: "no-store"`, 모든 응답에 `Cache-Control: no-store`(`cityUpstream.ts:15`). 토큰은 모듈 변수에만 있고 응답·쿠키·디스크로 나가지 않는다.
+7. 시크릿: `.env.example`는 `127.0.0.1:8080`과 `test@example.com`만 포함한다. `.gitignore:34-35`가 `.env*`를 제외하고 `.env.example`만 허용한다. 저장소 전체 이메일 정규식 검색에서 이 사이클 산출물(`src/`, `docs/agent-rules/`, `artifacts/task-team/`)에는 실제 이메일이 없다(`api-spec.md:57`도 `test@example.com`). `src/docs/city-api-reference.md`에는 URL·토큰 값이 없고 `accessToken` 필드명 언급만 있다. `docs/agent-rules/*.md`에서 실제 주소·이메일 검색 결과 없음.
 
-## 1. 인증/인가
+## Findings
 
-**N/A** — requirements.md §4, 134행에서 "인증/로그인은 이번 범위에서 제외"하도록 명시적으로 정의되어 있고, api-spec.md 177~178행도 동일하게 확인한다. 내부 전용 도구로 실제 배포 시에도 별도 접근 제어(VPN, 사내망, reverse proxy 인증 등) 레벨에서 처리되는 것으로 가정한다. 코드 레벨의 인증 부재는 이번 리뷰의 지적 대상이 아니다.
+### M1 (Medium) 쓰기 토큰이 개발용 `/dev/test-login` 단일 테스트 계정에 의존
 
-다만 api-spec.md 240~242행이 이미 "실제 API 전환 시 5개 함수 시그니처에 토큰 파라미터 추가 필요"를 명시해 두었으므로, 이 부분은 **아래 "실제 API 전환 시 고려사항"**에서 다시 짚는다.
+- 위치: `src/lib/server/cityApiToken.ts:33`
+- 근거: 대시보드의 모든 추가·수정·삭제가 하나의 테스트 계정 신원으로 상류에 기록된다. 상류 감사 로그에서 어떤 관리자가 변경했는지 구분할 수 없고, 상류가 운영 환경에서 `/dev/*`를 닫으면 쓰기가 전부 실패한다. 이메일을 아는 사람이 상류에 직접 로그인할 수 있는 구조이므로 이 계정 이메일은 비밀로 취급해야 한다. 이것은 요구사항·api-spec이 정한 방식이므로 코드 결함이 아니다.
+- 수정 방향: 운영 배포 전에 상류 팀에 정식 서비스 계정 발급 방식 확인. 당분간은 `CITY_API_TEST_EMAIL`을 배포 환경 비밀로만 관리하고, 상류 `/dev/test-login`이 운영에서 열려 있는지 확인한다. (확인하지 못함: 상류의 운영 정책)
 
-## 2. 입력 유효성 검사
+### L1 (Low) 입력 길이 상한 없음
 
-### [Medium] cityName/countryName에 길이 제한이 없음
-- 파일: `src/services/cityService.ts:50-58` (`hasMissingRequiredField`), `src/components/cities/CityFormModal.tsx:53-79` (`validate`)
-- 클라이언트 폼과 서비스 레이어 모두 `cityName`, `countryName`에 대해 trim 후 공백 여부만 검사하고, 최대 길이 제한이 없다. `countryCode`만 `maxLength={2}` 및 정규식 검증이 걸려 있다(CityFormModal.tsx:250, cityService.ts:74).
-- 영향: 현재는 인메모리 배열에 저장되므로 즉각적인 위험(DoS, DB 컬럼 오버플로우 등)은 없다. 그러나 실제 API로 교체되면 서버 측 컬럼 길이 제약 위반, 또는 매우 긴 문자열로 인한 UI 레이아웃 깨짐(CityListTable.tsx:104-106에서 그대로 렌더링)의 원인이 될 수 있다.
-- 권고: `cityName`/`countryName`에 합리적인 최대 길이(예: 100자)를 클라이언트·서비스 양쪽에 추가.
+- 위치: `src/lib/server/cityUpstream.ts:36-45,57-66`, route 파일의 `request.json()`
+- 근거: cityName/countryName에 최대 길이가 없고(구현 기록 2에서 클라이언트 100자 제한을 제거), body 크기 제한도 없다. 인증된 관리자만 도달 가능하므로 악용 난이도는 낮다. 상류가 거부하면 상류 메시지가 전달된다.
+- 수정 방향: 서버에서 문자열 길이(예: 상류 스펙 기준 최대치)와 `content-length` 상한을 둔다.
 
-### [Low] lat/lng이 유한하지 않은 값(Infinity)을 통과시킬 가능성
-- 파일: `src/services/cityService.ts:57` (`hasMissingRequiredField`), `66-72` (`validateCityInput`)
-- `Number.isNaN(lat)`만 검사하고 `Number.isFinite`는 검사하지 않는다. 다만 바로 다음 줄에서 `lat < -90 || lat > 90` 범위 체크가 있어 `Infinity`/`-Infinity`는 이 조건에 걸려 결국 거부된다(Infinity > 90이므로). 따라서 실질적 우회 경로는 없음 — 정보 제공 차원의 낮은 우선순위 항목.
-- 권고: 방어적 코딩 관점에서 `Number.isFinite(lat) && Number.isFinite(lng)`를 `hasMissingRequiredField` 또는 `validateCityInput` 초입에 명시적으로 추가해 두면 향후 범위 체크 로직이 바뀌어도 안전하다.
+### L2 (Low) 상태 변경 요청에 Origin/Content-Type 검사 없음 (CSRF는 SameSite=Lax에 의존)
 
-### [Medium] countryCode 정규식이 클라이언트/서버 간 불일치
-- 파일: `src/components/cities/CityFormModal.tsx:48` (`/^[A-Za-z]{2}$/`, 대소문자 허용) vs `src/services/cityService.ts:30` (`/^[A-Z]{2}$/`, 대문자만) 및 `toNormalizedCityInput`(84행)에서 `.toUpperCase()`로 정규화 후 서비스 레이어에서 재검증.
-- 영향: 실제로는 서비스 레이어가 최종 검증·정규화를 하므로 우회는 불가능하다(정상 동작). 다만 두 정규식이 다른 이유가 코드만 봐서는 불명확해 유지보수 시 혼동 가능성이 있다.
-- 권고: 주석으로 "클라이언트는 대소문자 허용 후 서버가 upper-case 정규화 및 재검증"임을 명시하거나, 공통 상수/유틸로 정규식을 공유.
+- 위치: `src/app/api/cities/route.ts:13`, `[cityId]/route.ts:16`, `src/lib/session.ts:64`
+- 근거: `request.json()`은 Content-Type을 보지 않는다. 쿠키는 `sameSite: "lax"`라서 교차 사이트 POST/PUT/DELETE에는 전송되지 않으므로 현재는 방어된다. 다만 같은 사이트(형제 서브도메인) 공격이나 브라우저 동작 변화에는 방어선이 하나뿐이다.
+- 수정 방향: 쓰기 핸들러에서 `Content-Type: application/json`과 `Origin` 일치를 확인하거나 `sameSite: "strict"` 검토.
 
-## 3. XSS
+### L3 (Low) 상류 응답 통과 범위
 
-**이상 없음.** 프로젝트 전역에서 `dangerouslySetInnerHTML`, `innerHTML`, `eval(`, `new Function(` 사용이 전혀 없음을 확인했다(`grep -rn` 결과 0건). 사용자 입력값(`city.name`, `city.country`, `city.countryCode` 등)은 모두 JSX 텍스트 노드(`{city.name}` 등, CityListTable.tsx:104-109)로 렌더링되어 React가 자동으로 이스케이프한다. `city.flag`(CityListTable.tsx:102)는 `getCountryFlag(countryCode)` 유틸리티가 반환하는 고정된 이모지 문자열로, 사용자 입력이 직접 삽입되지 않는다(코드베이스 내 미리 정의된 매핑 테이블로 확인).
+- 위치: `src/lib/server/cityUpstream.ts:116,128`
+- 근거: 성공 시 상류 `data`를 필드 필터 없이 그대로 전달하고, 4xx 시 상류 `data` 문자열(500자)을 그대로 사용자에게 보여 준다. 상류가 내부 필드나 내부 경로·SQL 조각이 든 메시지를 내려주면 노출된다. 현재 상류 계약은 도시 필드뿐이라 실제 노출은 확인하지 못했다.
+- 수정 방향: 성공 데이터는 `cityId, cityName, countryName, countryCode, lat, lng`만 골라 전달. 4xx 메시지는 허용 목록 또는 길이를 더 줄여 사용한다.
 
-폼 에러 메시지(`formError`, CityFormModal.tsx:193-200)도 서비스 레이어에서 하드코딩된 한국어 문자열(`Error` throw 메시지)만 사용하며 사용자 입력을 그대로 반영하지 않는다.
+### L4 (Low) 상류 fetch의 리다이렉트 추적과 토큰 발급 실패의 반복 호출
 
-## 4. CSRF / SSRF / SQL Injection
+- 위치: `cityUpstream.ts:95-104`, `cityApiToken.ts:36-40,69`
+- 근거: `redirect` 옵션이 기본값(follow)이다. 상류가 다른 오리진으로 리다이렉트하면 fetch 사양상 Authorization 헤더는 제거되지만, 의도치 않은 호스트로 요청이 나갈 수 있다. 또 토큰 발급 실패는 캐시되지 않아 쓰기 요청마다 최대 10초짜리 발급 시도가 반복된다(로그인한 관리자만 유발 가능).
+- 수정 방향: 상류 fetch에 `redirect: "error"`. 발급 실패 후 짧은 쿨다운(수 초) 고려.
 
-**N/A** — 실제 네트워크 호출(`fetch`, `apiGet/apiPost` 등)이나 DB 쿼리가 존재하지 않고, `src/mocks/mockCities.ts`는 순수 인메모리 배열 조작만 수행한다(1-9행 주석에서도 명시). CSRF는 상태 변경 요청이 서버로 전송되지 않으므로 해당 없음. SSRF/SQL injection 벡터 자체가 존재하지 않는다.
+### I1 (Info) 이 사이클 범위 밖의 실제 이메일 형태 문자열
 
-## 5. 시크릿/API 키 노출
+- 위치: `.harness/git-guards.test.mjs:31` (`oak20005@naver.com`)
+- 근거: 이번 변경이 아닌 기존 하네스 테스트 픽스처다. 개인 이메일일 수 있어 공개 저장소라면 `example.com` 도메인으로 바꾸는 것을 권한다. 이번 사이클 판정에는 영향이 없다.
 
-**이상 없음.** 리뷰 대상 파일 및 관련 코드에 하드코딩된 API 키, 토큰, 자격증명이 없음을 확인했다.
+### I2 (Info) 의존성
 
-## 6. 동시성/무결성 (참고, OWASP 범주 밖이나 데이터 무결성 관점에서 기록)
+- `@tanstack/react-virtual@3.14.23`(고정 버전, 배포 후 14일 경과)이 추가됐다. `pnpm audit`는 실행하지 않아 알려진 취약점 여부는 확인하지 못했다. CI에서 확인하길 권한다.
 
-`src/mocks/mockCities.ts`는 단일 스레드 JS 가정 하에 검증→쓰기를 동기적으로 수행해 경쟁 조건 없이 유일성을 보장한다고 주석에 명시되어 있고(6-9행), 실제로 `cityService.ts`의 `addCity`/`updateCity`도 `mockDelay()` 호출 전에 중복 검사와 쓰기를 완료한다(111-119행, 134-146행). 코드 검토 결과 이 가정은 현재 구현과 일치한다. 보안 취약점은 아니나, 실제 API 전환 시에는 서버 측에서 동일한 원자성 보장(예: DB unique constraint)이 필요함을 함께 기록해 둔다.
+## 구현 기록 "리뷰 확인 필요" 항목 판정
 
-## 7. 클라이언트 데이터 노출 (Low)
+구현 기록 1 (서버)
+- 타입 이름 `CityApiData`/`CityResponse`: 보안 관련 없음.
+- 401 외 4xx는 상류 상태 그대로 전달: 타당. 정보 노출은 메시지 본문(L3)이 문제이고 상태 코드 자체는 무해하다.
+- GET 401은 재시도 없이 502: 타당. 토큰이 필요 없는 조회에서 재발급 루프를 만들지 않아 오히려 안전하다.
+- `Authorization` Bearer 접두사 방어 분기: 타당. 토큰이 헤더 값으로만 쓰이고 사용자 입력이 섞이지 않는다.
+- 성공 시 상류 `data` 통과, `status` 고정 success: 부분 타당. 형태 검사는 있으나 필드 필터가 없어 L3로 기록.
+- `RouteContext` 사용: 보안 관련 없음. `cityId` 검증은 별도로 확인했다.
 
-- 파일: `src/mocks/mockCities.ts:36`, `42-52`, `55-59`
-- `getAllMockCities`, `searchMockCities`, `findMockCityById`가 원본 배열이 아닌 복사본(`{ ...city }`)을 반환하도록 이미 잘 구현되어 있어, 호출부에서 내부 저장소를 직접 변형할 수 없다. 방어적 복사 패턴이 일관되게 적용된 점은 긍정적이다. (지적 사항 아님 — 양호한 패턴으로 기록)
+구현 기록 2 (프론트엔드)
+- 1번 `cityErrorMessage.ts`의 서버 메시지 접두어 분기: 타당. 보안 문제는 없고, 파싱 대상이 서버가 만든 고정 문자열이라 사용자 입력이 분기를 조작하지 못한다. (결합도 문제는 보안 범위 밖)
+- 2, 3번(인증·설정 오류 문구): 타당. 클라이언트에는 "관리자에게 문의" 수준 문구만 노출되고 설정 값은 노출되지 않는다.
+- 4번 중복 강조 문자열 비교: 보안 관련 없음.
+- 5, 7, 8, 9번: 보안 관련 없음.
+- 6번 401 시 `new URL("/login", window.location.origin)`: 타당. 목적지가 고정 경로라 오픈 리다이렉트가 없다.
 
----
+## 최종 판정
 
-## 실제 API로 교체 시 반드시 함께 고려해야 할 보안 사항 (Forward-looking)
-
-현재 mock 구조는 안전하지만, 실 백엔드 연동 시 아래 항목이 새로 발생하는 공격 표면이므로 이번 리뷰에서 명시적으로 짚어둔다.
-
-1. **인증/인가 재도입** — api-spec.md 240-242행이 이미 지적한 대로 5개 함수(`getCities`, `searchCities`, `addCity`, `updateCity`, `deleteCity`)에 토큰/인증 컨텍스트 주입이 필요해진다. 이때 토큰을 localStorage에 평문 저장하지 말고, httpOnly 쿠키 또는 안전한 저장소 사용을 검토할 것.
-2. **서버 측 재검증 필수** — 현재 `validateCityInput`(cityService.ts:61-77)의 lat/lng 범위, countryCode 패턴, 필수 필드 검사는 클라이언트/mock 레이어에만 존재한다. 실 API 전환 후에도 이 검증 로직이 클라이언트 편의성용으로만 남고 **서버가 동일하거나 더 엄격한 검증을 반드시 재수행**해야 한다(클라이언트 검증은 우회 가능).
-3. **XSS 방어 가정의 재확인** — 지금은 React JSX 자동 이스케이프에 의존해 안전하지만, 실 API 응답 데이터를 그대로 신뢰해 렌더링 방식이 바뀌지 않는지(예: 서버 응답을 `dangerouslySetInnerHTML`로 렌더링하는 방식으로 리팩터링되지 않는지) 코드 리뷰 시 재확인 필요.
-4. **CSRF 토큰** — 실 API가 쿠키 기반 세션을 쓴다면 상태 변경 엔드포인트(`addCity`/`updateCity`/`deleteCity`에 대응하는 POST/PUT/DELETE)에 CSRF 토큰 또는 SameSite 쿠키 정책 적용 필요.
-5. **Rate limiting / 입력 길이 제한** — 위 Medium 이슈(cityName/countryName 길이 제한 없음)를 실 API 연동 전에 반드시 해결하고, 서버 측에도 동일한 제약을 걸어 과도한 payload로 인한 부하를 방지할 것.
-6. **에러 메시지 정보 노출** — 현재 mock의 Error 메시지("대상을 찾을 수 없습니다." 등)는 한국어 사용자 메시지로 안전하다. 실 API 전환 시 서버 스택 트레이스나 내부 구현 세부사항이 `error.message`(CityFormModal.tsx:156, 171-178; DeleteConfirmDialog.tsx:33-35)를 통해 그대로 Toast/배너에 노출되지 않도록 API 클라이언트 레이어에서 에러 메시지를 필터링/매핑하는 절차가 필요하다.
-
----
-
-## 결론
-
-이번 스코프(mock 서비스 레이어, 인메모리 저장소, 폼/테이블/다이얼로그 컴포넌트, 프로젝트 전역 XSS 벡터)에 대해 **Critical/High 취약점 없음**을 확인했으며 배포(현재 mock 단계 기준) 승인 가능. Medium 3건은 실 API 전환 이전에 처리하는 것을 권장하며, "실제 API 전환 시 고려사항" 6개 항목은 백엔드 연동 작업 착수 시 체크리스트로 활용할 것을 제안한다.
+배포 승인 (Critical/High 없음). 운영 투입 전 M1(상류 `/dev/test-login` 운영 사용 가능 여부와 계정 비밀 관리)을 사람이 확인하길 권한다. L1~L4는 이후 사이클에서 처리해도 배포를 막지 않는다. 코드는 수정하지 않았다.

@@ -990,6 +990,10 @@ test('AskUserQuestion 직접 입력 답변 뒤 같은 응답의 재질문을 차
 		assert.equal(decide(prompt, answer('best practice가 뭔데?')), 'deny');
 		assert.equal(decide(prompt, answer('지원, DB 공유')), 'allow');
 		assert.equal(decide(answer('best practice가 뭔데?'), prompt), 'allow');
+		// 질문이 아닌 지시형 직접 입력은 차단하지 않고, 물음표 없는 의문형은 차단
+		assert.equal(decide(prompt, answer('ip 주소 사용하되, 주소를 환경변수로 관리할 수 있도록 해')), 'allow');
+		assert.equal(decide(prompt, answer('이건 무슨 소리임')), 'deny');
+		assert.equal(decide(prompt, answer('운영 먼저 할까요')), 'deny');
 
 		// subagent의 수정은 사용자 답변과 무관하므로 허용
 		writeFileSync(transcript, [prompt, answer('왜 3초임?')].map(entry => JSON.stringify(entry)).join('\n'));
@@ -1125,6 +1129,10 @@ test('재질문 차단이 풀린 상태에서 질문을 다음 메시지로 미�
 		assert.equal(decide(defer, prompt), 'block');
 		assert.equal(decide(defer, prompt, freeText), 'allow');
 		assert.equal(decide(defer, prompt, freeText, peer), 'block');
+		assert.equal(
+			decide(defer, prompt, { ...freeText, toolUseResult: { ...freeText.toolUseResult, answers: { 'R-05?': '닫기 대신 유지하도록 해' } } }),
+			'block'
+		);
 		assert.equal(decide(`> ${defer}\n\n인용한 문장에 답합니다.`, prompt), 'allow');
 	} finally {
 		rmSync(fixture, { recursive: true, force: true });
@@ -1379,6 +1387,9 @@ for (const tool of ['.claude', '.codex']) {
 		assert.equal(decide(question, bash('python3 -c \'from pathlib import Path; print(Path("x").read_text())\''), unanswered).called, false);
 		// Stop은 같은 질문 묶음을 한 번만 막음
 		assert.deepEqual(decide(question, stop, unanswered), { result: 'block', again: 'allow', called: true });
+		// 미답변 판정이 한 번만 나오면 재판정 결과(답함)를 따라 통과
+		const flaky = `n=$(cat "$0.n" 2>/dev/null || echo 0); echo $((n + 1)) >"$0.n"; if [ "$n" = 0 ]; then ${unanswered}; else ${answered}; fi`;
+		assert.deepEqual(decide(question, edit, flaky), { result: 'allow', again: 'allow', called: true });
 		// 판정기가 고장 나면 통과
 		assert.equal(decide(question, edit, 'echo broken').result, 'allow');
 		// 응답 기록이 없는 질문 턴도 편집 전 판정하고, 질문 없는 작업 지시는 통과
