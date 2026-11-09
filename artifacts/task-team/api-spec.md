@@ -360,3 +360,195 @@ cities: {
 5. 1차 이월: 개발 서버 쓰기 동작(토큰 만료, `Bearer` 접두사, 역할 검사, 중복·없는 id 응답, C-3).
 6. 개발(IP)과 개발(도메인)이 같은 서버인지(C-1). 이 명세의 개발은 IP 서버 하나다.
 7. 배포 환경 변수 재설정 절차(C-7).
+
+# 3차: 위치 검색 프록시
+
+입력: `requirements.md`의 "3차" 절(I-05·I-07·I-08, 3-4, 3-7, 3-9의 N-1~N-4 확정). 이 절은 명세만 정하며 구현 코드는 없다. 1·2차 본문과 충돌하면 이 절이 우선한다.
+표기: "정책 확인"은 공식 문서를 읽은 내용(2026-11-09, 이 작업의 WebFetch와 orchestrator 확인이 일치), "코드 확인"은 이 저장소 코드를 읽은 사실, "제안"은 이 문서의 설계 결정, "확인 필요"는 미확인이다. Nominatim API는 호출하지 않았다.
+이 사이클에도 DB는 없다. 도시 API(`server` 쿼리)와 무관한 별도 엔드포인트다.
+
+## 3-0. Nominatim 정책 확인 (requirements 3-7 Q-1 해소)
+
+- 정책 출처: https://operations.osmfoundation.org/policies/nominatim/
+- API 출처: https://nominatim.org/release-docs/latest/api/Search/
+
+| 항목 | 정책 확인 내용 | 이 설계의 대응 |
+| --- | --- | --- |
+| 호출 빈도 | 절대 상한 초당 1회. 웹사이트/앱 단위이며 모든 사용자 트래픽의 합이 한도를 넘으면 안 된다 | 3-F 최소 호출 간격 |
+| 식별 | 앱을 식별하는 유효한 HTTP Referer 또는 User-Agent 필수. 라이브러리 기본값은 불가 | 3-C User-Agent |
+| 자동완성 | 클라이언트 측 자동완성 구현 금지 | 버튼 클릭 때만 호출(frontend 소관). 서버는 키 입력 단위 호출을 만들지 않는다 |
+| 캐시 | 앱은 프록시를 두고 요청 캐시를 켜야 한다. 같은 질의를 반복하면 차단될 수 있다 | 3-F 인스턴스 메모리 캐시 도입(필수) |
+| 출처 표기 | 매체에 맞게 표기 의무. 데이터는 ODbL | 3-D: 응답 필드는 불필요, UI 정적 문구로 표기 |
+| 대량 조회 | 비권장. 주기적 앱 요청은 대량 조회로 간주, 체계적 조회·수집 금지 | 일괄 조회 기능을 만들지 않는다 |
+| 중단 요구 | 앱은 OSMF 요청 시 소프트웨어 업데이트 없이 끌 수 있어야 한다 | 3-G `NOMINATIM_DISABLED`(제안) |
+| 개인 정보 | 개인·기밀 데이터를 보내지 않는다 | 도시명·국가코드만 전달 |
+| 보장 | 접근 철회·정책 변경이 예고 없이 가능. 명시적 보증 조항은 확인되지 않음 | 실패 시 수동 입력 흐름 유지(I-07) |
+
+Search API 확인: `countrycodes`는 alpha-2 쉼표 목록의 하드 필터. `limit` 기본 10·상한 40. `format`은 명시해야 한다(생략 시 공용 서버가 웹 UI로 보냄). `addressdetails=1`이면 `address.country_code`가 온다. `q`와 구조화 파라미터(`city` 등)는 함께 쓰지 않는다. `email`은 대량 호출 시 권장되는 선택 파라미터. jsonv2 필드: `place_id`, `osm_type`, `osm_id`, `lat`, `lon`, `display_name`, `name`, `addresstype`, `category`, `type`, `importance`, `address`.
+
+확인되지 않은 것: "내부 어드민 도구 허용 여부"를 따로 정한 조항은 찾지 못했다(앱 단위 규칙이 적용된다고 읽을 뿐 허용 보증이 아님). 한국어 이름 품질과 `address.country_code` 누락 가능성(Q-4), 배포 IP 제한(Q-2)은 여전히 확인 필요다.
+
+## 3-A. 엔드포인트
+
+| 항목 | 값 |
+| --- | --- |
+| 경로(제안) | `GET /api/geocode` (`src/app/api/geocode/route.ts`) |
+| 메서드 | GET만. 다른 메서드는 Next 기본 405 |
+| 인증 | `withSession` 필수. 세션 없음 -> 401 `{status:"fail", data:"로그인이 필요합니다."}`, 상류 미호출 |
+| `server` 쿼리 | 받지 않는다. 알 수 없는 쿼리는 무시하고 상류에 전달하지 않는다 |
+| 쿼리 | `city`(도시명), `country`(alpha-3) |
+| 성공 응답 | `200 {status:"success", data: GeocodeCandidate[]}` (0건이면 빈 배열, 200) |
+| 실패 응답 | 기존 `ApiFail`(`failResponse`) 형식 + `code` 필드(3-E) |
+
+경로 근거: 도시 리소스가 아니므로 `/api/cities*`에 두지 않는다(`[cityId]` 동적 경로와 충돌 방지, 제안). Route Handler는 기본 캐시되지 않으므로(1차에서 확인한 `15-route-handlers.md`) 응답 캐시는 3-F 서버 내부 캐시로만 하고, 브라우저 응답에는 `Cache-Control: no-store`를 둔다(제안).
+
+## 3-B. 입력 검증과 400 규칙
+
+Route Handler가 권위 있게 검증하며 상류 호출 전에 모두 통과해야 한다.
+
+| 입력 | 규칙 | 위반 시 |
+| --- | --- | --- |
+| `city` | 없음/중복 지정/제어 문자 제거 후 trim 빈 문자열 -> 거부. 길이 상한 100자(제안) | 400 `INVALID_INPUT` "도시명을 입력해 주세요." |
+| `country` | `^[A-Z]{3}$`(대문자만, 도시 API 검증과 같은 규칙, 서버가 정규화하지 않음) | 400 `INVALID_INPUT` "국가 코드가 올바르지 않습니다." |
+| alpha-3 -> alpha-2 | `countryFlagMapping.ts`의 표로 변환. 표에 없는 코드(`HKR`, `ZYC` 포함)는 상류 미호출 | 400 `INVALID_INPUT` "지원하지 않는 국가 코드입니다." |
+
+- 상류 URL은 `URLSearchParams`로 만든다. 문자열 이어붙이기 금지.
+- 코드 확인: 해당 표는 `src/utils/countryFlagMapping.ts` 안에 있으나 `getCountryFlag`만 export된다. 서버에서 쓰려면 표 또는 조회 함수를 export해야 한다(구현 몫, 순수 데이터라 양쪽 import 가능). 표를 복제하지 않는다.
+
+## 3-C. 상류 호출
+
+- 호스트·경로는 서버 코드 상수로 고정한다: Nominatim 공용 서버의 `/search`. 클라이언트 입력·환경 변수로 호스트·경로를 바꿀 수 없다(SSRF 방지). 구현은 `src/lib/server/nominatim.ts`(신규, 서버 전용).
+- 파라미터(모두 서버가 만든다):
+
+| 파라미터 | 값 | 이유 |
+| --- | --- | --- |
+| `city` | 검증된 도시명 | 요구사항 3-1에서 `city=서울` 1회 호출 확인. 구조화 검색이라 `q`와 섞지 않는다 |
+| `countrycodes` | 소문자 alpha-2 1개 | 하드 필터(N-3) |
+| `format` | `jsonv2` | 생략 시 웹 UI로 감 |
+| `limit` | `5` | 후보 상한과 같게 해 호출 부하를 최소화 |
+| `accept-language` | `ko` | 한국어 후보명 우선 |
+| `addressdetails` | `1` | 국가 일치 검증과 구분 정보 |
+
+- `email` 파라미터는 쓰지 않는다. 식별은 User-Agent로 한다.
+- User-Agent(제안): 고정 앱 이름 상수(`globber-dashboard/1.0` 형태)를 기본으로 하고, 선택 환경 변수 `NOMINATIM_USER_AGENT`가 있으면 덮어쓴다. 이유: 정책은 라이브러리 기본값이 아닌 앱 식별을 요구하므로 기본 상수만으로 충족한다. OSMF가 연락처를 요구하면 재배포 없이 환경 변수 변경으로 대응할 수 있다. 필수 환경 변수로 만들면 미설정 환경에서 기능이 막히므로 선택으로 둔다. 실제 이메일은 코드·문서에 쓰지 않는다.
+- 헤더: `User-Agent`, `Accept: application/json`, `Accept-Language: ko`. 쿠키·세션·도시 API 토큰은 보내지 않는다.
+- 타임아웃(제안): `AbortSignal.timeout(5000)`. 기존 도시 API 호출이 `AbortSignal.timeout(CITY_API_TIMEOUT_MS)` 패턴을 쓴다(코드 확인 `cityUpstream.ts` 103행). 상수로 두고 환경 변수화하지 않는다.
+- 리다이렉트는 따르지 않는다(`redirect: "error"`, 제안): 고정 호스트 보장.
+
+## 3-D. 응답 스키마
+
+`src/types/city.ts`에 추가할 타입 초안:
+
+```ts
+/** 위치 검색 후보 한 건. Nominatim 응답을 그대로 노출하지 않고 이 필드만 반환한다 */
+export type GeocodeCandidate = {
+  /** Nominatim place_id를 문자열로 바꾼 값(목록 key 용도) */
+  id: string;
+  /** 표시명(accept-language=ko). 같은 표시명이 여러 건일 수 있다 */
+  displayName: string;
+  /** 위도 -90~90 */
+  lat: number;
+  /** 경도 -180~180 */
+  lng: number;
+  /** 행정구역 구분용 보조 텍스트(addressdetails의 state/county 등 조합). 없으면 null */
+  region: string | null;
+  /** jsonv2 type 값(예: city, administrative). 없으면 null */
+  placeType: string | null;
+};
+
+export type GeocodeResponse = ApiSuccess<GeocodeCandidate[]>;
+
+/** 실패 코드. 사유 문자열이 아니라 이 literal로 구분한다 */
+export type GeocodeFailCode =
+  | "INVALID_INPUT"
+  | "RATE_LIMITED"
+  | "DISABLED"
+  | "UPSTREAM_RATE_LIMITED"
+  | "UPSTREAM_ERROR"
+  | "UPSTREAM_TIMEOUT"
+  | "UPSTREAM_BAD_RESPONSE";
+
+/** code가 없는 ApiFail(401 등)도 올 수 있으므로 소비자는 code를 optional로 읽는다 */
+export type GeocodeFail = ApiFail & { code?: GeocodeFailCode };
+```
+
+- 필드 정제: 위 필드만 만든다. `licence`, `osm_id`, `boundingbox`, `importance`, `address` 전체는 응답에 넣지 않는다. 기존 `ApiFail`은 바꾸지 않고 `code`는 위치 검색 전용 확장이다.
+- 출처 표기 필드(판단): 응답에 두지 않는다. 표기 문구는 모든 후보에 같은 정적 문구("© OpenStreetMap contributors")라 서버가 매 응답에 실을 이유가 없고, 0건·실패 응답에도 표시 여부는 UI가 정한다. 정적 문구와 위치는 frontend/designer 소관이며, 정책상 후보 목록 근처에 표기가 있어야 한다는 점만 이 명세가 전한다.
+- 후보 버림 규칙:
+  1. `lat`/`lon`은 `Number()`로 변환해 유한하고 범위 안이어야 한다. 아니면 그 후보만 버린다.
+  2. `display_name`이 비어 있거나 문자열이 아니면 버린다.
+  3. 국가 일치(N-3): `address.country_code`가 요청 alpha-2(소문자 비교)와 다르거나 없으면 버린다. 없는 후보를 버리는 것은 조용히 틀린 국가 좌표가 들어가는 것을 막는 제안이다.
+  4. 같은 `place_id`는 한 번만 둔다. 같은 `displayName`은 합치지 않는다(실제로 다른 장소일 수 있음, 3-9 관찰). 구분은 `region`, `lat`, `lng`.
+- 후보 상한 `MAX_GEOCODE_CANDIDATES = 5`. 요청 `limit`도 5이고 정제 후 5개 이하다. 클라이언트가 전체 집합 기준 판정을 하지 않으므로 별도 판정용 필드는 필요 없다.
+- 0건: 상류 빈 배열, 또는 국가 불일치만으로 모두 버려진 경우는 `200` 빈 배열. 상류가 비어 있지 않은데 형식 오류로 모두 버려지면 `UPSTREAM_BAD_RESPONSE`(3-4).
+- `region`은 `address`의 `state`, `county` 등 있는 값을 쉼표로 조합한 짧은 문자열(최대 2개, 제안). 사용할 키는 실제 응답 형태로 구현 단계에서 확정한다(확인 필요, Q-4).
+
+## 3-E. 오류 매핑
+
+모든 오류 응답은 `{status:"fail", data:"<한국어 메시지>", code}`다. 상류 원문·URL·헤더는 응답과 로그에 노출하지 않는다. 최종 사용자 문구는 프론트가 `cityErrorMessage.ts`에서 통일하고, 서버 `data`는 기본 문구다.
+
+| 상황 | 내부 상태 | code | `data` 기본 문구 |
+| --- | --- | --- | --- |
+| 세션 없음 | 401 | (없음, `withSession`) | 로그인이 필요합니다. |
+| 입력 검증 실패 | 400 | `INVALID_INPUT` | 3-B 문구 |
+| 서버 최소 호출 간격 위반 | 429 | `RATE_LIMITED` | 잠시 후 다시 시도해 주세요. |
+| 비활성 스위치 | 503 | `DISABLED` | 위치 검색을 사용할 수 없습니다. |
+| 상류 429 | 502 | `UPSTREAM_RATE_LIMITED` | 위치를 찾지 못했습니다. 잠시 후 다시 시도해 주세요. |
+| 상류 4xx(429 제외)·5xx·네트워크 오류 | 502 | `UPSTREAM_ERROR` | 같은 문구 |
+| 타임아웃 | 504 | `UPSTREAM_TIMEOUT` | 같은 문구 |
+| JSON 파싱 실패·최상위가 배열 아님·모든 후보 형식 오류 | 502 | `UPSTREAM_BAD_RESPONSE` | 같은 문구 |
+| 0건 | 200 | (성공) | 빈 배열 |
+
+- 상류 429를 502로 감싸는 이유: 우리 쪽 `RATE_LIMITED`와 구분하고 상류 상태를 드러내지 않기 위해서다(제안). 기존 `proxyCityApi`도 상류 5xx를 502로 감싼다(코드 확인).
+- I-07은 원인별 사용자 문구를 구분하지 않으므로 `code`는 로깅·테스트·후속 UX용이다. `RATE_LIMITED`만 "잠시 후" 안내로 따로 보일 수 있다(프론트 소관).
+- 로그에는 상류 상태코드와 code만 남기고 도시명은 남기지 않는다(제안).
+
+## 3-F. 호출 빈도·캐시 설계와 다중 인스턴스 한계
+
+정책 근거는 3-0(상한 초당 1회, 같은 질의 반복 시 차단 가능, 캐시 필요).
+
+1. 결과 캐시(도입, 필수): 같은 (도시명 정규화, alpha-3) 질의의 성공 결과(0건 포함, 오류 제외)를 모듈 스코프 `Map`에 둔다. TTL 10분, 최대 100건(제안, 초과 시 가장 오래된 항목부터 제거). 정규화는 trim, 연속 공백 축약, 소문자화. 이유: (1) 정책이 캐시를 요구하고 같은 질의 반복 클라이언트를 차단할 수 있다고 한다. (2) 사용자가 같은 입력으로 다시 누를 때 간격 제한(429)에 걸리지 않는다. (3) 지명 좌표는 자주 바뀌지 않아 10분 재사용의 위험이 작다. 100건은 단일 계정 수동 사용에 충분하고 메모리 증가가 작다. 캐시 적중은 간격 제한보다 먼저 확인한다.
+2. 최소 호출 간격(인스턴스 단위): 모듈 스코프에 마지막 상류 호출 시각 1개를 두고, 이전 상류 호출 시작 후 1,100ms(상한 1초에 여유 100ms, 제안)가 지나기 전 도착한 요청은 상류를 호출하지 않고 429 `RATE_LIMITED`로 거절한다. 슬립 후 처리는 실행 시간을 늘리고 요청을 쌓으므로 쓰지 않는다. 캐시 적중·검증 실패는 기록을 갱신하지 않는다. 비교와 갱신은 같은 동기 구간에서 해 동시 요청의 두 번째가 거절되게 한다.
+3. 클라이언트 쿨다운 1초(N-4)는 frontend 소관이며 서버 제한을 대체하지 않는다.
+
+다중 인스턴스 한계(N-4로 수용, 문서화 의무):
+- 캐시와 간격 기록은 프로세스 메모리에 있어 서버리스/다중 인스턴스에서는 인스턴스마다 따로 동작한다. 전체 합 초당 1회와 캐시 공유를 보장하지 못하고, 인스턴스 재시작 시 사라진다.
+- 완화 근거(추정, 미확인): 내부 어드민 단일 계정의 수동 클릭 호출량이 낮다. 같은 배포 IP를 다른 앱과 공유할 때의 429는 Q-2로 남는다.
+- 전역 보장은 외부 저장소(새 인프라)가 필요하며 이번 범위 밖이다.
+- 이 한계와 캐시·간격 상수는 `src/docs/city-api-reference.md`의 위치 검색 절에 적는다(구현 단계).
+
+## 3-G. 환경 변수
+
+`.env.example`에 선택 항목 2개를 placeholder로 추가한다(실제 값 없음, 주석에 선택임을 표기).
+
+```
+# 위치 검색(Nominatim) 요청의 User-Agent (서버 전용, 선택). 비우면 앱 기본 식별자를 쓴다
+NOMINATIM_USER_AGENT=
+
+# true이면 위치 검색을 호출 없이 비활성(서버 전용, 선택). 이용 정책상 중단 요청 대응용
+NOMINATIM_DISABLED=
+```
+
+- 호스트는 환경 변수로 받지 않는다(3-C). `NEXT_PUBLIC_` 접두사를 쓰지 않고 `"use client"` 파일에서 import하지 않는다.
+- `docs/agent-rules/project.md` 백엔드 항목은 새 환경 변수 이름을 알려야 할 때만 갱신한다.
+
+## 3-H. 영향받는 기존 테스트 (목록만, 작성 담당 배정 없음)
+
+이 절 작성 중 `tests/`를 grep하지 않았다. 아래는 코드 구조에 근거한 예상이며 실행으로 확인이 필요하다.
+
+- `tests/utils/cityErrorMessage.test.ts`: 건수 줄 문구 변경(I-01)과 위치 검색 문구 추가로 서버 라벨 단언이 깨질 수 있다.
+- `tests/components/CityFormModal.test.tsx`: 국가 선택·위치 찾기 도입으로 국가명·국가코드 입력 단언이 바뀐다(frontend 소관 변경).
+- `countryFlagMapping` 테스트가 있다면: 표 export 추가 후에도 기존 단언이 유지되는지 확인 필요.
+- `withSession` 자체는 바꾸지 않으므로 기존 Route Handler 테스트는 영향 없음 예상.
+- 새 Route Handler·`nominatim.ts`·캐시/간격 로직 테스트는 이 명세에서 담당을 배정하지 않는다(qa-engineer 소관, 외부 호출은 fetch 모킹).
+
+## 3-I. 사용자 결정이 필요한 항목
+
+없음. N-1~N-4는 3-9에서 확정됐고 이 절은 그 범위 안에서 설계했다. 사용자 승인 없이 정한 명세 수준 제안(되돌릴 수 있고 요구사항을 바꾸지 않음):
+
+- 결과 캐시를 권장에서 필수로 올림(3-0, 3-F).
+- `address.country_code`가 없는 후보는 버림(N-3 안전장치의 해석).
+- 경로 `/api/geocode`, 간격 1,100ms, TTL 10분·100건, 타임아웃 5초, 후보 상한 5.
+- 출처 표기용 응답 필드는 두지 않음(3-D).
+
+frontend/designer 전달 사항: 후보 목록 근처에 "© OpenStreetMap contributors" 정적 출처 표기가 필요하다(정책 확인).
