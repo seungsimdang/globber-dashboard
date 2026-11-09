@@ -1387,6 +1387,9 @@ for (const tool of ['.claude', '.codex']) {
 		assert.equal(decide(question, bash('python3 -c \'from pathlib import Path; print(Path("x").read_text())\''), unanswered).called, false);
 		// Stop은 같은 질문 묶음을 한 번만 막음
 		assert.deepEqual(decide(question, stop, unanswered), { result: 'block', again: 'allow', called: true });
+		// 미답변 판정이 한 번만 나오면 재판정 결과(답함)를 따라 통과
+		const flaky = `n=$(cat "$0.n" 2>/dev/null || echo 0); echo $((n + 1)) >"$0.n"; if [ "$n" = 0 ]; then ${unanswered}; else ${answered}; fi`;
+		assert.deepEqual(decide(question, edit, flaky), { result: 'allow', again: 'allow', called: true });
 		// 판정기가 고장 나면 통과
 		assert.equal(decide(question, edit, 'echo broken').result, 'allow');
 		// 응답 기록이 없는 질문 턴도 편집 전 판정하고, 질문 없는 작업 지시는 통과
