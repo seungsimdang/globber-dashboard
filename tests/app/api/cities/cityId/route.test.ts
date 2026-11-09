@@ -6,8 +6,8 @@ vi.mock("@/lib/session", () => ({ getSession: () => getSession() }));
 
 const valid = { cityName: "서울", countryName: "대한민국", lat: 37.5, lng: 127, countryCode: "KOR" };
 const ctx = (cityId: string) => ({ params: Promise.resolve({ cityId }) }) as never;
-const req = (method: string, type?: string, body?: string) =>
-  new Request("http://localhost/api/cities/1?server=dev", { method, headers: type ? { "Content-Type": type } : undefined, body });
+const req = (method: string, type?: string, body?: string, server = "dev") =>
+  new Request(`http://localhost/api/cities/1?server=${server}`, { method, headers: type ? { "Content-Type": type } : undefined, body });
 
 beforeEach(() => {
   vi.resetModules();
@@ -58,6 +58,23 @@ describe("/api/cities/[cityId] 핸들러", () => {
     const { PUT } = await import("@/app/api/cities/[cityId]/route");
     const bad = JSON.stringify({ ...valid, lat: 100 });
     expect((await PUT(req("PUT", "application/json", bad), ctx("1"))).status).toBe(400);
+  });
+
+  it("운영 PUT·DELETE는 id/body/environment/upstream 처리 전에 403으로 거부한다", async () => {
+    vi.stubEnv("CITY_API_PROD_BASE_URL", "");
+    vi.stubEnv("CITY_API_TEST_EMAIL", "");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { PUT, DELETE } = await import("@/app/api/cities/[cityId]/route");
+
+    const put = await PUT(req("PUT", "application/json", "{broken", "prod"), ctx("not-an-id"));
+    const del = await DELETE(req("DELETE", undefined, undefined, "prod"), ctx("not-an-id"));
+
+    expect(put.status).toBe(403);
+    expect(del.status).toBe(403);
+    expect(await put.json()).toMatchObject({ status: "fail", data: "운영 서버는 쓰기 인증 준비 전이라 조회만 할 수 있습니다." });
+    expect(await del.json()).toMatchObject({ status: "fail", data: "운영 서버는 쓰기 인증 준비 전이라 조회만 할 수 있습니다." });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("유효한 DELETE는 검증된 id 경로로 상류에 전달한다", async () => {

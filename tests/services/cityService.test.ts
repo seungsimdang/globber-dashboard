@@ -38,6 +38,14 @@ afterEach(() => {
 });
 
 describe("getCities (F1)", () => {
+  it.each(["prod", "dev"] as const)("%s 목록 요청은 같은 서버 식별자를 내부 URL에 유지한다", async (server) => {
+    const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: [] }));
+
+    await getCities(server);
+
+    expect(callOf(fetchMock)[0]).toBe(`/api/cities?server=${server}`);
+  });
+
   it("GET /api/cities 응답을 City 타입으로 변환해 반환한다", async () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: [seoulApiData] }));
 

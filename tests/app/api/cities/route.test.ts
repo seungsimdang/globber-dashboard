@@ -8,8 +8,8 @@ const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const valid = { cityName: "서울", countryName: "대한민국", lat: 37.5, lng: 127, countryCode: "KOR" };
 
-const req = (method: string, init: { type?: string; body?: string } = {}) =>
-  new Request("http://localhost/api/cities?server=dev", {
+const req = (method: string, init: { type?: string; body?: string; server?: string } = {}) =>
+  new Request(`http://localhost/api/cities?server=${init.server ?? "dev"}`, {
     method,
     headers: init.type ? { "Content-Type": init.type } : undefined,
     body: init.body,
@@ -51,6 +51,48 @@ describe("/api/cities 핸들러", () => {
     vi.stubGlobal("fetch", vi.fn(async () => json(200, { status: "success", data: [] })));
     const { GET } = await import("@/app/api/cities/route");
     expect((await GET(req("GET"))).status).toBe(200);
+  });
+
+  it("Origin 불일치가 있어도 정상 GET은 서버 인증 후 403으로 차단되지 않는다", async () => {
+    vi.stubEnv("CITY_API_PROD_BASE_URL", "http://upstream.test/api");
+    const fetchMock = vi.fn(async () => json(200, { status: "success", data: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { GET } = await import("@/app/api/cities/route");
+    const requestWithDifferentOrigin = new Request("http://localhost/api/cities?server=prod", {
+      headers: { Origin: "http://localhost:3001" },
+    });
+
+    expect((await GET(requestWithDifferentOrigin)).status).toBe(200);
+    expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe("http://upstream.test/api/api/v1/cities/all");
+  });
+
+  it("운영 POST는 본문·환경 설정·상류를 확인하기 전에 403으로 거부한다", async () => {
+    vi.stubEnv("CITY_API_PROD_BASE_URL", "");
+    vi.stubEnv("CITY_API_TEST_EMAIL", "");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { POST } = await import("@/app/api/cities/route");
+    const response = await POST(req("POST", { server: "prod", type: "application/json", body: "{broken" }));
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      status: "fail",
+      data: "운영 서버는 쓰기 인증 준비 전이라 조회만 할 수 있습니다.",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("세션이 없는 운영 POST는 운영 쓰기 차단보다 먼저 401을 반환한다", async () => {
+    getSession.mockResolvedValue(null);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { POST } = await import("@/app/api/cities/route");
+
+    const response = await POST(req("POST", { server: "prod", type: "application/json", body: "{}" }));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ status: "fail", data: "로그인이 필요합니다." });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("POST에 JSON Content-Type이 없으면 415다", async () => {
