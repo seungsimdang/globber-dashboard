@@ -150,34 +150,40 @@ def judge_command(output_path):
                 "-s", "read-only", "--skip-git-repo-check", "--ephemeral", "-o", output_path, "-"]
     return ["claude", "-p", "--safe-mode", "--model", "haiku", "--tools", "", "--no-session-persistence"]
 
-try:
-    with tempfile.TemporaryDirectory() as workdir:
-        output_path = os.path.join(workdir, "verdict.txt")
-        result = subprocess.run(
-            judge_command(output_path),
-            input=judge_prompt,
-            capture_output=True,
-            text=True,
-            timeout=JUDGE_TIMEOUT_SECONDS,
-            cwd=workdir,
-            env={**os.environ, "HARNESS_STOP_JUDGE": "1"},
-        )
-        # Codex는 진행 로그가 stdout에 섞여 마지막 메시지 파일을 우선 읽음
-        text = open(output_path, encoding="utf-8").read() if os.path.exists(output_path) else result.stdout
-    verdict = json.loads(re.search(r"\{.*?\}", text, re.S).group(0))
-except Exception:
-    # 판정기 호출이나 응답 해석이 실패하면 작업을 막지 않고 통과
-    sys.exit(0)
+def judge_once():
+    # 판정기 호출이나 응답 해석이 실패하면 작업을 막지 않도록 None(답함)으로 처리
+    try:
+        with tempfile.TemporaryDirectory() as workdir:
+            output_path = os.path.join(workdir, "verdict.txt")
+            result = subprocess.run(
+                judge_command(output_path),
+                input=judge_prompt,
+                capture_output=True,
+                text=True,
+                timeout=JUDGE_TIMEOUT_SECONDS,
+                cwd=workdir,
+                env={**os.environ, "HARNESS_STOP_JUDGE": "1"},
+            )
+            # Codex는 진행 로그가 stdout에 섞여 마지막 메시지 파일을 우선 읽음
+            text = open(output_path, encoding="utf-8").read() if os.path.exists(output_path) else result.stdout
+        verdict = json.loads(re.search(r"\{.*?\}", text, re.S).group(0))
+    except Exception:
+        return None
+    # ok 같은 참거짓 필드는 판정기가 답했다고 쓰면서 false를 내는 오판이 있어, 답하지 않은 질문 원문이 있을 때만 막음
+    question = verdict.get("unanswered")
+    return question.strip() if isinstance(question, str) and question.strip() else None
 
-# ok 같은 참거짓 필드는 판정기가 답했다고 쓰면서 false를 내는 오판이 있어, 답하지 않은 질문 원문이 있을 때만 막음
-question = verdict.get("unanswered")
-if not isinstance(question, str) or not question.strip():
+# 같은 입력에도 판정이 흔들려(실측 4회 중 1회 답한 질문을 미답변 판정) 미답변 판정은 한 번 더 받아 둘 다 미답변일 때만 막음
+question = judge_once()
+if question:
+    question = judge_once()
+if not question:
     os.makedirs(os.environ["MARK_DIR"], exist_ok=True)
     with open(mark, "w", encoding="utf-8") as passed:
         passed.write(digest)
     sys.exit(0)
 
-question = question.strip()[:200]
+question = question[:200]
 if event == "PreToolUse":
     print(json.dumps({"hookSpecificOutput": {
         "hookEventName": "PreToolUse",

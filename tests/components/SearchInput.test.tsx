@@ -15,7 +15,7 @@ describe("SearchInput (F2)", () => {
     const onSearch = vi.fn();
     render(<SearchInput onSearch={onSearch} />);
 
-    fireEvent.change(screen.getByPlaceholderText("도시명으로 검색"), {
+    fireEvent.change(screen.getByPlaceholderText("도시명 또는 국가명으로 검색"), {
       target: { value: "  Seoul  " },
     });
 
@@ -31,7 +31,7 @@ describe("SearchInput (F2)", () => {
   it("debounce 중 추가 입력이 들어오면 마지막 값으로만 한 번 호출한다", () => {
     const onSearch = vi.fn();
     render(<SearchInput onSearch={onSearch} />);
-    const input = screen.getByPlaceholderText("도시명으로 검색");
+    const input = screen.getByPlaceholderText("도시명 또는 국가명으로 검색");
 
     fireEvent.change(input, { target: { value: "Se" } });
     act(() => {
@@ -49,7 +49,7 @@ describe("SearchInput (F2)", () => {
   it("클리어 버튼은 값이 있을 때만 노출되고, 클릭 시 입력을 비우고 즉시 onSearch('')를 호출한다", () => {
     const onSearch = vi.fn();
     render(<SearchInput onSearch={onSearch} />);
-    const input = screen.getByPlaceholderText("도시명으로 검색") as HTMLInputElement;
+    const input = screen.getByPlaceholderText("도시명 또는 국가명으로 검색") as HTMLInputElement;
 
     expect(screen.queryByLabelText("검색어 지우기")).not.toBeInTheDocument();
 
@@ -66,7 +66,7 @@ describe("SearchInput (F2)", () => {
     const onSearch = vi.fn();
     render(<SearchInput onSearch={onSearch} />);
 
-    fireEvent.change(screen.getByPlaceholderText("도시명으로 검색"), {
+    fireEvent.change(screen.getByPlaceholderText("도시명 또는 국가명으로 검색"), {
       target: { value: "   " },
     });
     act(() => {
