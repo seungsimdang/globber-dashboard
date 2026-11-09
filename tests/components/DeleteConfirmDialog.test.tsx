@@ -39,24 +39,24 @@ const seoul: City = {
 
 describe("DeleteConfirmDialog (F5)", () => {
   it("city가 null이면 다이얼로그를 렌더링하지 않는다", () => {
-    renderWithProviders(<DeleteConfirmDialog city={null} onOpenChange={vi.fn()} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={null} onOpenChange={vi.fn()} />);
 
-    expect(screen.queryByText("도시 삭제")).not.toBeInTheDocument();
+    expect(screen.queryByText("[개발] 도시 삭제")).not.toBeInTheDocument();
   });
 
   it("city가 있으면 확인 문구에 도시명/국가명을 포함해 표시한다", () => {
-    renderWithProviders(<DeleteConfirmDialog city={seoul} onOpenChange={vi.fn()} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={seoul} onOpenChange={vi.fn()} />);
 
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(
-      screen.getByText((_, element) => element?.textContent === "'Seoul(South Korea)'을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."),
+      screen.getByText((_, element) => element?.textContent === "개발 서버에서 'Seoul(South Korea)'을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."),
     ).toBeInTheDocument();
   });
 
   it("취소 버튼 클릭 시 onOpenChange(false)가 호출되고 삭제 요청은 보내지 않는다", () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: deletedCity }));
     const onOpenChange = vi.fn();
-    renderWithProviders(<DeleteConfirmDialog city={seoul} onOpenChange={onOpenChange} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={seoul} onOpenChange={onOpenChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
 
@@ -67,21 +67,21 @@ describe("DeleteConfirmDialog (F5)", () => {
   it("삭제 버튼 클릭 시 DELETE /api/cities/{id}로 요청하고 다이얼로그가 닫힌다", async () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: deletedCity }));
     const onOpenChange = vi.fn();
-    renderWithProviders(<DeleteConfirmDialog city={seoul} onOpenChange={onOpenChange} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={seoul} onOpenChange={onOpenChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("/api/cities/1");
+    expect(url).toBe("/api/cities/1?server=dev");
     expect(init.method).toBe("DELETE");
   });
 
   it("대상이 없다는 404 응답이면 토스트를 띄우고 다이얼로그를 닫는다 (F5 idempotency)", async () => {
     stubFetch(() => jsonResponse(404, { status: "fail", data: "서버 메시지" }));
     const onOpenChange = vi.fn();
-    renderWithProviders(<DeleteConfirmDialog city={seoul} onOpenChange={onOpenChange} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={seoul} onOpenChange={onOpenChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 
@@ -92,7 +92,7 @@ describe("DeleteConfirmDialog (F5)", () => {
   it("서버 오류는 토스트만 띄우고 다이얼로그를 열어 둬 재시도할 수 있다", async () => {
     stubFetch(() => jsonResponse(502, { status: "fail", data: "도시 서버에 문제가 발생했습니다." }));
     const onOpenChange = vi.fn();
-    renderWithProviders(<DeleteConfirmDialog city={seoul} onOpenChange={onOpenChange} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={seoul} onOpenChange={onOpenChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
 
@@ -112,7 +112,7 @@ describe("DeleteConfirmDialog (F5)", () => {
     );
 
     const onOpenChange = vi.fn();
-    renderWithProviders(<DeleteConfirmDialog city={seoul} onOpenChange={onOpenChange} />);
+    renderWithProviders(<DeleteConfirmDialog server="dev" city={seoul} onOpenChange={onOpenChange} />);
 
     const deleteButton = screen.getByRole("button", { name: "삭제" });
     fireEvent.click(deleteButton);

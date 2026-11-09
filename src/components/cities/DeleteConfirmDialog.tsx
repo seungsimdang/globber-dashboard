@@ -4,10 +4,11 @@ import { AlertDialog, AlertDialogCancel } from "@/components/common/AlertDialog"
 import { Button } from "@/components/common/Button";
 import { useToast } from "@/components/common/Toast";
 import { useDeleteCityMutation } from "@/hooks/useCityMutations";
-import type { City } from "@/types/city";
-import { NOT_FOUND_MESSAGE, getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
+import type { City, CityServer } from "@/types/city";
+import { NOT_FOUND_MESSAGE, getErrorMessage, isNotFoundError, serverMessages } from "@/utils/cityErrorMessage";
 
 type DeleteConfirmDialogProps = {
+  server: CityServer;
   /** 삭제 대상 도시. null이면 다이얼로그가 닫힌 상태다. */
   city: City | null;
   onOpenChange: (open: boolean) => void;
@@ -19,16 +20,17 @@ type DeleteConfirmDialogProps = {
  * 충돌한다 - 그래서 삭제 버튼은 일반 `Button`으로 만들고, mutation이 끝난 뒤 우리가
  * 직접 `onOpenChange(false)`를 호출해 닫는다.
  */
-export const DeleteConfirmDialog = ({ city, onOpenChange }: DeleteConfirmDialogProps) => {
+export const DeleteConfirmDialog = ({ server, city, onOpenChange }: DeleteConfirmDialogProps) => {
+  const messages = serverMessages(server);
   const { showToast } = useToast();
-  const deleteCityMutation = useDeleteCityMutation();
+  const deleteCityMutation = useDeleteCityMutation(server);
 
   const handleDelete = () => {
     if (!city) return;
 
     deleteCityMutation.mutate(city.id, {
       onSuccess: () => {
-        showToast({ title: "도시가 삭제되었습니다", variant: "success" });
+        showToast({ title: messages.deleted, variant: "success" });
         onOpenChange(false);
       },
       onError: (error: Error) => {
@@ -50,11 +52,11 @@ export const DeleteConfirmDialog = ({ city, onOpenChange }: DeleteConfirmDialogP
       onOpenChange={(next) => {
         if (!deleteCityMutation.isPending) onOpenChange(next);
       }}
-      title="도시 삭제"
+      title={`${messages.titlePrefix}도시 삭제`}
       description={
         city ? (
           <>
-            &apos;{city.name}({city.country})&apos;을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수
+            {messages.label} 서버에서 &apos;{city.name}({city.country})&apos;을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수
             없습니다.
           </>
         ) : undefined

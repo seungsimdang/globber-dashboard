@@ -50,11 +50,11 @@ afterAll(() => {
 });
 
 const baseProps = {
+  server: "dev" as const,
   keyword: "",
   isLoading: false,
   isError: false,
   onRetry: vi.fn(),
-  onAddCity: vi.fn(),
   onEditCity: vi.fn(),
   onDeleteCity: vi.fn(),
 };
@@ -63,8 +63,8 @@ describe("CityListTable (F1)", () => {
   it("로딩 중이면 로딩 텍스트를 표시하고 데이터/에러/빈 상태는 표시하지 않는다", () => {
     render(<CityListTable {...baseProps} cities={[]} isLoading />);
 
-    expect(screen.getByText("불러오는 중...")).toBeInTheDocument();
-    expect(screen.queryByText("등록된 도시가 없습니다.")).not.toBeInTheDocument();
+    expect(screen.getByText("개발 서버 목록을 불러오는 중...")).toBeInTheDocument();
+    expect(screen.queryByText("개발 서버에 등록된 도시가 없습니다.")).not.toBeInTheDocument();
   });
 
   it("에러 상태면 에러 메시지와 다시 시도 버튼을 표시하고, 클릭 시 onRetry가 호출된다 (F1 엣지케이스)", () => {
@@ -90,19 +90,17 @@ describe("CityListTable (F1)", () => {
     expect(screen.getByText("목록을 불러오지 못했습니다.")).toBeInTheDocument();
   });
 
-  it("검색어 없이 데이터가 0건이면 전체 빈 상태 문구와 도시 추가 버튼을 표시한다 (F1 빈 상태)", () => {
-    const onAddCity = vi.fn();
-    render(<CityListTable {...baseProps} cities={[]} onAddCity={onAddCity} />);
+  it("검색어 없이 데이터가 0건이면 전체 빈 상태 문구만 표시하고 도시 추가 버튼은 없다 (F1 빈 상태)", () => {
+    render(<CityListTable {...baseProps} cities={[]} />);
 
-    expect(screen.getByText("등록된 도시가 없습니다.")).toBeInTheDocument();
-    screen.getByRole("button", { name: "도시 추가" }).click();
-    expect(onAddCity).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("개발 서버에 등록된 도시가 없습니다.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "도시 추가" })).not.toBeInTheDocument();
   });
 
   it("검색어가 있는 상태에서 데이터가 0건이면 검색 결과 없음 문구를 표시한다 (F2 엣지케이스)", () => {
     render(<CityListTable {...baseProps} cities={[]} keyword="존재하지않음" />);
 
-    expect(screen.getByText("'존재하지않음'에 대한 검색 결과가 없습니다.")).toBeInTheDocument();
+    expect(screen.getByText("개발 서버에서 '존재하지않음'에 대한 검색 결과가 없습니다.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "도시 추가" })).not.toBeInTheDocument();
   });
 

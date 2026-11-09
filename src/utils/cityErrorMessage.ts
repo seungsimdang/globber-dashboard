@@ -1,4 +1,5 @@
 import { ApiError, DEFAULT_ERROR_MESSAGE } from "@/lib/apiClient";
+import type { CityServer } from "@/types/city";
 
 type ErrorContext = "list" | "write" | "delete";
 
@@ -66,3 +67,39 @@ export const getErrorMessage = (error: unknown, context: ErrorContext): string =
 /** 서버가 대상 도시를 찾지 못했음을 알린 오류인지 */
 export const isNotFoundError = (error: unknown): boolean =>
   error instanceof ApiError && error.status === 404;
+
+/** 서버 표시 이름 */
+export const SERVER_LABEL: Record<CityServer, string> = { prod: "운영", dev: "개발" };
+
+/** 운영 서버 쓰기 불가 안내 문구 */
+export const PROD_WRITE_NOTICE = "운영 서버는 쓰기 인증 준비 전이라 조회만 할 수 있습니다.";
+
+/** 서버 이름이 붙은 화면 문구 */
+export const serverMessages = (server: CityServer) => {
+  const label = SERVER_LABEL[server];
+
+  return {
+    label,
+    loading: `${label} 서버 목록을 불러오는 중...`,
+    empty: `${label} 서버에 등록된 도시가 없습니다.`,
+    searchEmpty: (keyword: string) => `${label} 서버에서 '${keyword}'에 대한 검색 결과가 없습니다.`,
+    count: (shown: number, total: number, filtered: boolean) =>
+      filtered
+        ? `${label} 서버 검색 결과 ${shown.toLocaleString("ko-KR")}개 / 전체 ${total.toLocaleString("ko-KR")}개`
+        : `${label} 서버 전체 ${total.toLocaleString("ko-KR")}개`,
+    listConfigError: `${label} 서버 설정이 올바르지 않아 목록을 불러올 수 없습니다. 관리자에게 문의해주세요.`,
+    added: `${label} 서버에 도시가 추가되었습니다`,
+    updated: `${label} 서버의 도시가 수정되었습니다`,
+    deleted: `${label} 서버에서 도시가 삭제되었습니다`,
+    titlePrefix: `[${label}] `,
+  };
+};
+
+/** 목록 조회 오류 문구, 설정 오류는 서버 전용 문구이고 나머지는 앞에 서버 이름을 붙임 */
+export const getListErrorMessage = (error: unknown, server: CityServer): string => {
+  if (error instanceof ApiError && classify(error) === "config") {
+    return serverMessages(server).listConfigError;
+  }
+
+  return `${SERVER_LABEL[server]} 서버: ${getErrorMessage(error, "list")}`;
+};

@@ -52,7 +52,7 @@ const tokyo: City = {
 // 중복 사전 검사용으로 전체 목록을 쿼리 캐시에 미리 넣은 클라이언트
 const createClientWithCities = (cities: City[]) => {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-  client.setQueryData(citiesQueryOptions().queryKey, cities);
+  client.setQueryData(citiesQueryOptions("dev").queryKey, cities);
   return client;
 };
 
@@ -77,24 +77,24 @@ const fillValidForm = (overrides: Partial<Record<string, string>> = {}) => {
 // 모달은 열림 시점에만 폼 값을 초기화하므로 닫힌 상태로 먼저 렌더링한 뒤 open을 true로 전환해 실제 사용 패턴 재현
 const renderEditModalOpened = (city: City, onOpenChange = vi.fn(), queryClient?: QueryClient) => {
   const { rerender } = renderWithProviders(
-    <CityFormModal open={false} mode="edit" city={city} onOpenChange={onOpenChange} />,
+    <CityFormModal server="dev" open={false} mode="edit" city={city} onOpenChange={onOpenChange} />,
     queryClient,
   );
-  rerender(<CityFormModal open mode="edit" city={city} onOpenChange={onOpenChange} />);
+  rerender(<CityFormModal server="dev" open mode="edit" city={city} onOpenChange={onOpenChange} />);
   return { onOpenChange };
 };
 
 describe("CityFormModal - create mode (F3)", () => {
   it("제목/제출 버튼이 추가 모드 문구를 표시한다", () => {
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
-    expect(screen.getByText("도시 추가")).toBeInTheDocument();
+    expect(screen.getByText("[개발] 도시 추가")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "추가" })).toBeInTheDocument();
   });
 
   it("필수 필드 누락 시 제출을 막고 필드별 인라인 에러를 표시한다 (F3 엣지케이스)", () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: savedCity }));
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
@@ -109,7 +109,7 @@ describe("CityFormModal - create mode (F3)", () => {
   });
 
   it("위경도 범위를 벗어나면 검증 오류를 표시하고 제출을 막는다 (F3 엣지케이스)", () => {
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
     fillValidForm({ lat: "91", lng: "181" });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
@@ -119,7 +119,7 @@ describe("CityFormModal - create mode (F3)", () => {
   });
 
   it("숫자가 아닌 위경도 입력은 검증 오류를 표시한다 (F3 엣지케이스)", () => {
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
     fillValidForm({ lat: "abc", lng: "xyz" });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
@@ -129,7 +129,7 @@ describe("CityFormModal - create mode (F3)", () => {
   });
 
   it("국가코드가 alpha-3 형식이 아니면 검증 오류를 표시한다", () => {
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
     fillValidForm({ countryCode: "KR" });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
@@ -138,7 +138,7 @@ describe("CityFormModal - create mode (F3)", () => {
   });
 
   it("에러 표시된 필드는 값 변경 즉시(onChange) 재검증되어 에러가 해제된다", () => {
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
     expect(screen.getByText("도시명을 입력해주세요")).toBeInTheDocument();
@@ -151,16 +151,16 @@ describe("CityFormModal - create mode (F3)", () => {
   it("유효한 값으로 제출하면 POST /api/cities로 요청하고 성공 토스트 후 모달이 닫힌다", async () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: savedCity }));
     const onOpenChange = vi.fn();
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={onOpenChange} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={onOpenChange} />);
 
     fillValidForm();
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(await screen.findByText("도시가 추가되었습니다")).toBeInTheDocument();
+    expect(await screen.findByText("개발 서버에 도시가 추가되었습니다")).toBeInTheDocument();
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("/api/cities");
+    expect(url).toBe("/api/cities?server=dev");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({
       cityName: "Busan",
@@ -174,7 +174,7 @@ describe("CityFormModal - create mode (F3)", () => {
   it("중복 도시명+국가명 제출 시 요청 없이 폼 상단 배너로 표시하고 입력값을 유지한다 (F3 엣지케이스)", async () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: savedCity }));
     renderWithProviders(
-      <CityFormModal open mode="create" onOpenChange={vi.fn()} />,
+      <CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />,
       createClientWithCities([seoul, tokyo]),
     );
 
@@ -188,7 +188,7 @@ describe("CityFormModal - create mode (F3)", () => {
 
   it("서버가 400 메시지로 거부하면 메시지를 그대로 배너에 표시하고 입력값을 유지한다", async () => {
     stubFetch(() => jsonResponse(400, { status: "fail", data: "서버 거부 메시지" }));
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
 
     fillValidForm();
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
@@ -202,14 +202,14 @@ describe("CityFormModal - edit mode (F4)", () => {
   it("edit 모드에서는 city 데이터로 폼이 초기화되고 저장 버튼 문구를 표시한다", () => {
     renderEditModalOpened(seoul);
 
-    expect(screen.getByText("도시 수정")).toBeInTheDocument();
+    expect(screen.getByText("[개발] 도시 수정")).toBeInTheDocument();
     expect((screen.getByLabelText(/도시명/) as HTMLInputElement).value).toBe("Seoul");
     expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("South Korea");
     expect(screen.getByRole("button", { name: "저장" })).toBeInTheDocument();
   });
 
   it("처음부터 open=true로 마운트돼도 edit 모드 폼이 city 데이터로 초기화된다", () => {
-    renderWithProviders(<CityFormModal open mode="edit" city={seoul} onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="edit" city={seoul} onOpenChange={vi.fn()} />);
 
     expect((screen.getByLabelText(/도시명/) as HTMLInputElement).value).toBe("Seoul");
     expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("South Korea");
@@ -225,10 +225,10 @@ describe("CityFormModal - edit mode (F4)", () => {
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(await screen.findByText("도시가 수정되었습니다")).toBeInTheDocument();
+    expect(await screen.findByText("개발 서버의 도시가 수정되었습니다")).toBeInTheDocument();
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("/api/cities/1");
+    expect(url).toBe("/api/cities/1?server=dev");
     expect(init.method).toBe("PUT");
   });
 
@@ -265,7 +265,7 @@ describe("CityFormModal - 공통 동작", () => {
   it("취소 버튼 클릭 시 아무 요청 없이 즉시 닫힌다", () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: savedCity }));
     const onOpenChange = vi.fn();
-    renderWithProviders(<CityFormModal open mode="create" onOpenChange={onOpenChange} />);
+    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={onOpenChange} />);
 
     fillValidForm();
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
@@ -275,8 +275,8 @@ describe("CityFormModal - 공통 동작", () => {
   });
 
   it("open=false면 모달 내용을 렌더링하지 않는다", () => {
-    renderWithProviders(<CityFormModal open={false} mode="create" onOpenChange={vi.fn()} />);
+    renderWithProviders(<CityFormModal server="dev" open={false} mode="create" onOpenChange={vi.fn()} />);
 
-    expect(screen.queryByText("도시 추가")).not.toBeInTheDocument();
+    expect(screen.queryByText("[개발] 도시 추가")).not.toBeInTheDocument();
   });
 });

@@ -4,16 +4,20 @@ import { useEffect, useRef } from "react";
 import { AlertCircle, Pencil, Trash2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/common/Button";
-import type { City } from "@/types/city";
+import type { City, CityServer } from "@/types/city";
+import { serverMessages } from "@/utils/cityErrorMessage";
+
+/** 운영 탭 안내 줄과 비활성 쓰기 버튼을 aria-describedby로 잇는 id */
+export const PROD_WRITE_NOTICE_ID = "prod-write-notice";
 
 type CityListTableProps = {
+  server: CityServer;
   cities: City[];
   keyword: string;
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string;
   onRetry: () => void;
-  onAddCity: () => void;
   onEditCity: (city: City) => void;
   onDeleteCity: (city: City) => void;
 };
@@ -30,16 +34,19 @@ const OVERSCAN_ROWS = 10;
  * 표 헤더는 컨테이너 상단에 고정한다.
  */
 export const CityListTable = ({
+  server,
   cities,
   keyword,
   isLoading,
   isError,
   errorMessage,
   onRetry,
-  onAddCity,
   onEditCity,
   onDeleteCity,
 }: CityListTableProps) => {
+  const messages = serverMessages(server);
+  const writeDisabled = server === "prod";
+  const writeNoticeId = writeDisabled ? PROD_WRITE_NOTICE_ID : undefined;
   const hasKeyword = keyword.trim().length > 0;
   const showEmpty = !isLoading && !isError && cities.length === 0;
   const showRows = !isLoading && !isError && cities.length > 0;
@@ -83,7 +90,7 @@ export const CityListTable = ({
           {isLoading ? (
             <tr>
               <td colSpan={TABLE_HEADERS.length} className="px-4 py-10 text-center text-gray-500">
-                불러오는 중...
+                {messages.loading}
               </td>
             </tr>
           ) : null}
@@ -106,16 +113,7 @@ export const CityListTable = ({
             <tr>
               <td colSpan={TABLE_HEADERS.length} className="px-4 py-10">
                 <div className="flex flex-col items-center gap-3 text-center text-gray-500">
-                  {hasKeyword ? (
-                    <p>&apos;{keyword}&apos;에 대한 검색 결과가 없습니다.</p>
-                  ) : (
-                    <>
-                      <p>등록된 도시가 없습니다.</p>
-                      <Button size="sm" onClick={onAddCity}>
-                        도시 추가
-                      </Button>
-                    </>
-                  )}
+                  <p>{hasKeyword ? messages.searchEmpty(keyword) : messages.empty}</p>
                 </div>
               </td>
             </tr>
@@ -152,6 +150,8 @@ export const CityListTable = ({
                           variant="ghost"
                           size="icon"
                           aria-label={`${city.name} 수정`}
+                          disabled={writeDisabled}
+                          aria-describedby={writeNoticeId}
                           onClick={() => onEditCity(city)}
                         >
                           <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -160,6 +160,8 @@ export const CityListTable = ({
                           variant="ghost"
                           size="icon"
                           aria-label={`${city.name} 삭제`}
+                          disabled={writeDisabled}
+                          aria-describedby={writeNoticeId}
                           onClick={() => onDeleteCity(city)}
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />

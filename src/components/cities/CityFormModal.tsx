@@ -11,12 +11,13 @@ import {
   useAddCityMutation,
   useUpdateCityMutation,
 } from "@/hooks/useCityMutations";
-import type { City } from "@/types/city";
-import { NOT_FOUND_MESSAGE, getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
+import type { City, CityServer } from "@/types/city";
+import { NOT_FOUND_MESSAGE, getErrorMessage, isNotFoundError, serverMessages } from "@/utils/cityErrorMessage";
 
 export type CityFormMode = "create" | "edit";
 
 type CityFormModalProps = {
+  server: CityServer;
   open: boolean;
   mode: CityFormMode;
   /** mode === 'edit'일 때 수정 대상 도시. 모달이 열리는 시점에만 폼 초기값으로 반영한다. */
@@ -86,10 +87,11 @@ const validate = (values: FormValues): FieldErrors => {
  * 필드 검증 실패는 인라인 에러로, 중복 도시와 서버 오류는 폼 상단 배너로 표시한다.
  * 수정 대상이 이미 사라진 경우(대상 없음)는 폼을 닫고 Toast로만 안내한다.
  */
-export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalProps) => {
+export const CityFormModal = ({ server, open, mode, city, onOpenChange }: CityFormModalProps) => {
   const { showToast } = useToast();
-  const addCityMutation = useAddCityMutation();
-  const updateCityMutation = useUpdateCityMutation();
+  const messages = serverMessages(server);
+  const addCityMutation = useAddCityMutation(server);
+  const updateCityMutation = useUpdateCityMutation(server);
 
   // 처음부터 open=true로 마운트돼도 edit 모드 초기값을 채움
   const [values, setValues] = useState<FormValues>(() =>
@@ -160,7 +162,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
     if (mode === "create") {
       addCityMutation.mutate(params, {
         onSuccess: () => {
-          showToast({ title: "도시가 추가되었습니다", variant: "success" });
+          showToast({ title: messages.added, variant: "success" });
           onOpenChange(false);
         },
         onError: (error: Error) => {
@@ -176,7 +178,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
       { cityId: city.id, params },
       {
         onSuccess: () => {
-          showToast({ title: "도시가 수정되었습니다", variant: "success" });
+          showToast({ title: messages.updated, variant: "success" });
           onOpenChange(false);
         },
         onError: (error: Error) => {
@@ -197,7 +199,7 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
       onOpenChange={(next) => {
         if (!isSubmitting) onOpenChange(next);
       }}
-      title={mode === "create" ? "도시 추가" : "도시 수정"}
+      title={`${messages.titlePrefix}${mode === "create" ? "도시 추가" : "도시 수정"}`}
       initialFocusRef={cityNameInputRef}
     >
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
