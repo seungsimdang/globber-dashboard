@@ -87,3 +87,29 @@ type CityRequest = {
 - 일반 회원(test-login) 토큰으로 쓰기가 허용되는지
 - `accessToken` 만료 시간과 `Bearer ` 접두사 포함 여부
 - 중복 도시 추가, 없는 id 수정·삭제 시 상류의 상태 코드와 메시지
+
+## 위치 검색 엔드포인트 (`GET /api/geocode`)
+
+도시 API와 무관한 별도 엔드포인트다. 도시명과 alpha-3 국가코드로 OpenStreetMap Nominatim 공용 서버(`/search`)를 조회해 좌표 후보를 돌려준다. 호스트·경로는 서버 코드에 고정돼 있고 `server` 쿼리는 받지 않는다.
+
+- 인증: `withSession` 필수. 세션이 없으면 401, 상류 미호출.
+- 쿼리: `city`(1회만, 제어 문자 제거 후 trim, 100자 이하), `country`(`^[A-Z]{3}$`이며 `toAlpha2` 표에 있는 코드). 알 수 없는 쿼리는 무시한다.
+- 성공: `200 {status:"success", data: GeocodeCandidate[]}` (최대 5건, 0건이면 빈 배열). 후보는 `id`, `displayName`, `lat`, `lng`, `region`, `placeType`만 가진다. `address.country_code`가 요청 국가와 다르거나 없는 후보와 `place_id`가 중복된 후보는 제외한다.
+- 실패: `{status:"fail", data, code}`. `code`는 `GeocodeFailCode`다.
+
+| 상황 | 상태 | code |
+| --- | --- | --- |
+| 입력 검증 실패 | 400 | `INVALID_INPUT` |
+| 서버 최소 호출 간격 위반 | 429 | `RATE_LIMITED` |
+| `NOMINATIM_DISABLED=true` | 503 | `DISABLED` |
+| 상류 429 | 502 | `UPSTREAM_RATE_LIMITED` |
+| 상류 4xx·5xx·네트워크 오류 | 502 | `UPSTREAM_ERROR` |
+| 타임아웃(5초) | 504 | `UPSTREAM_TIMEOUT` |
+| JSON 오류·배열 아님·모든 항목 형식 오류 | 502 | `UPSTREAM_BAD_RESPONSE` |
+
+- 상류 요청: `city`, `countrycodes`(alpha-2 1개), `format=jsonv2`, `limit=5`, `accept-language=ko`, `addressdetails=1`. User-Agent는 앱 기본 식별자이며 선택 환경 변수 `NOMINATIM_USER_AGENT`로 덮어쓴다. 리다이렉트는 따르지 않는다.
+- 캐시: (정규화한 도시명, alpha-3) 성공 결과를 TTL 10분, 최대 100건으로 프로세스 메모리에 둔다. 오류는 캐시하지 않는다. 캐시 적중은 간격 제한보다 먼저 확인한다.
+- 호출 간격: 직전 상류 호출 시작 후 1,100ms 안에 도착한 캐시 미적중 요청은 429로 거절한다(대기하지 않음).
+- 다중 인스턴스 한계: 캐시와 간격 기록은 인스턴스마다 따로 동작하고 재시작 시 사라진다. 서버리스/다중 인스턴스에서는 전체 합 초당 1회를 보장하지 못한다. 전역 보장은 외부 저장소가 필요해 범위 밖이다.
+- 출처: 데이터는 ODbL이며 UI가 후보 근처에 "© OpenStreetMap contributors"를 표기한다(응답 필드 없음).
+- 확인 필요: 한국어 이름 품질, `address.country_code` 누락 빈도, 배포 IP에 대한 상류 제한.
