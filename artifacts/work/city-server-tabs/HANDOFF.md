@@ -22,7 +22,7 @@
 
 ## 변경 파일
 
-메인 체크아웃, 미커밋.
+메인 체크아웃의 구현은 `3d1ac27`, `54d0fca`, `a542d61`로 로컬 커밋됨. 아래는 해당 구현의 파일 목록이며 최신 후속 상태는 `artifacts/work/city-input-assist/STATUS.md`를 따른다.
 
 - 백엔드: `src/lib/server/cityServer.ts`(신규), `src/lib/server/cityApiToken.ts`, `src/lib/server/cityUpstream.ts`, `src/app/api/cities/route.ts`, `src/app/api/cities/[cityId]/route.ts`, `.env.example`, `src/docs/city-api-reference.md`, `docs/agent-rules/project.md`
 - 프런트: `src/components/common/Tabs.tsx`(신규), `src/components/cities/CitiesPageContent.tsx`, `CityListTable.tsx`, `CityFormModal.tsx`, `DeleteConfirmDialog.tsx`, `src/hooks/useCities.ts`, `useCityMutations.ts`, `src/lib/react-query/query-keys.ts`, `src/services/cityService.ts`, `src/utils/cityErrorMessage.ts`
@@ -52,7 +52,7 @@
 
 ## 미해결 항목과 사람 승인
 
-- 구현 변경 커밋·push 승인(PR #19, `feature/real-city-api`). 미푸시 커밋 `a876e65`, `43f22ef`도 함께
+- 구현 로컬 커밋 완료(PR #19, `feature/real-city-api`). push는 미승인. 미푸시 커밋 `a876e65`, `43f22ef`도 함께 남아 있음
 - requirements C-1~C-7 확인 필요 항목(IP·도메인 개발 서버 동일 여부, 서버 간 id 의미, 운영 쓰기 인증 수단, 운영 응답 형식·호출 허용량, 배포 환경 변수 재설정)
 - 1차 이월 미검증: 실서버 쓰기 동작, `providers.tsx` 재시도 규칙 단위 테스트, 입력 지연·스크린리더
 - 구현 기록의 리뷰 확인 필요: 검색 입력·건수 줄을 탭 패널 밖에 둔 점(design-spec 2-C와 차이), 안내 줄 `-mt-3` 등 화면 미확인 스타일
@@ -61,5 +61,5 @@
 ## 다음 담당자가 할 일
 
 1. `git status`로 위 변경 파일이 메인 체크아웃에 그대로 있는지 확인
-2. 사용자 승인 후 관심사별로 커밋(`.claude/skills/git-commit` 규칙, 한 Bash 호출당 커밋 1개)하고 push
-3. task-team-orchestrator 9번부터 진행: T07·T08 병렬 리뷰 → 9-1 게이트 → T09 QA → summary·improvement-log 갱신
+2. `artifacts/work/city-input-assist/STATUS.md`의 후속 상태와 검증 결과를 따른다. 로컬 커밋만 승인됐으며 push하지 않는다
+3. 통합 리뷰·QA 결과를 summary·improvement-log에 반영한다

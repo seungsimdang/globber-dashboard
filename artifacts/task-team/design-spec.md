@@ -492,3 +492,8 @@ Nominatim 이용 정책 조항(orchestrator가 공식 정책 페이지에서 확
 - 위치 찾기: 비활성 사유 `aria-describedby`, 상태 영역 `aria-live="polite"`(실패는 `role="alert"`), 후보 행은 버튼이라 Tab/Enter/Space 조작, 선택 후 포커스는 위도 칸, 출처 링크는 새 창 안내 `aria-label`.
 - 포커스 링은 기존 `Input`/`Button`과 동일(`ring-blue-600`).
 - 반응형: 최소 1024px 기준. 후보 행은 `truncate`, 모달 폭 `max-w-lg`. 모바일 대응 없음(프로젝트 규칙).
+
+## 2026-11-09 후속 결정 (기존 D-2·loading 명세 대체)
+
+- 사용자가 D-2 보완을 승인했다. 도시명+국가코드를 비교해 국가명 표기 차이의 중복 누락을 막는다. 기존 데이터는 변경하지 않는다.
+- 로딩 스피너는 위치 찾기 버튼 안 하나만 표시한다. 아래 loading 안내는 제거하고 결과·오류의 aria-live 영역은 유지한다.

@@ -20,7 +20,7 @@ Next.js 문서 확인(orchestrator, 메인 체크아웃 `node_modules/next/dist/
 
 ## 1. 상류 계약 (실제 API, 확인됨)
 
-호스트: dev 서버 `http://54.180.101.234:8080` (평문 HTTP. `https://dev.globber.world/api/dev/test-login`은 HTML을 돌려줘 쓰지 못한다). 경로는 호스트 루트 기준이다(`/api/v1/cities*`, `/dev/test-login`). (2차 주석: 2차 절이 우선한다. 개발 서버 주소는 CITY_API_DEV_BASE_URL이고 운영 서버가 추가된다.)
+호스트: dev 서버 `http://{개발 서버 IP}:8080` (평문 HTTP. `https://dev.globber.world/api/dev/test-login`은 HTML을 돌려줘 쓰지 못한다). 경로는 호스트 루트 기준이다(`/api/v1/cities*`, `/dev/test-login`). (2차 주석: 2차 절이 우선한다. 개발 서버 주소는 CITY_API_DEV_BASE_URL이고 운영 서버가 추가된다.)
 
 | 용도 | 메서드 경로 | 요청 | 성공 응답 `data` | 토큰 |
 | --- | --- | --- | --- | --- |

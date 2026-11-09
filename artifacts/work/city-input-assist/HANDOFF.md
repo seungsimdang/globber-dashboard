@@ -1,5 +1,9 @@
 # Handoff: city-input-assist
 
+## Codex 인계 후 최신 결과 (2026-11-09)
+
+2·3차 리뷰·QA 후 외부 좌표의 잘못된 숫자 강제 변환을 수정했다(`6bcee0a`). 처음 재현한 D-2 중복 누락은 디자인의 제외 권장안을 승인으로 잘못 취급한 판정을 철회하고 사용자에게 보고했다. 사용자가 이번 작업 보완을 승인해 도시명+국가코드 비교로 수정했으며, 위치 찾기의 중복 스피너·로딩 안내도 제거했다. 최종 `code-review-7.md` 정적 리뷰 통과, `qa-report-3.md`의 20파일 183개·lint·타입·build 통과다. CodeRabbit의 추가 finding 0건은 후속 보완 이전 결과이며 최신 diff에서는 재실행하지 않았다. 로컬 커밋만 승인됐으며 이 저장소는 push하지 않았다. 아래 기존 구현 인계의 검증 기록은 이전 세션 결과와 구분한다.
+
 ## 먼저 읽을 순서
 
 1. `artifacts/work/city-input-assist/STATUS.md`
@@ -56,4 +60,4 @@ Codex 인계 후 로컬 커밋: 서버 `8890586`, 프런트 `b00958c`. 각 커�
 
 1. `git status`로 위 변경 파일이 메인 체크아웃에 그대로 있는지 확인
 2. 승인 범위에 따라 관심사별로 로컬 커밋(`.agents/skills/git-commit`, 한 호출당 커밋 1개). push하지 않음
-3. task-team-orchestrator 9번부터: 2차·3차 diff를 함께 T07·T08 병렬 리뷰(다음 번호 `code-review-4.md`, `security-review-3.md`) → 9-1 게이트 → T09 QA(`qa-report-2.md`) → summary·improvement-log 갱신
+3. 리뷰·QA·summary 갱신은 완료. 후속 작업은 STATUS의 D-2·저장 검증·push 승인 범위를 따른다

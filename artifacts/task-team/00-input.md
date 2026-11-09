@@ -2,7 +2,7 @@
 
 ## 사용자 요청 원문
 
-> http://54.180.101.234:8080/swagger-ui/index.html 참고하여 아직 못 한 항목들 작업 이어서해
+> http://{개발 서버 IP}:8080/swagger-ui/index.html 참고하여 아직 못 한 항목들 작업 이어서해
 
 "아직 못 한 항목"은 직전 대화에서 정리한 미완료 목록을 가리킨다.
 
@@ -27,7 +27,7 @@
 
 ## 확인된 사실 (orchestrator가 실제 서버에 호출해 확인)
 
-스펙 원본: `http://54.180.101.234:8080/v3/api-docs` (OpenAPI, title "GLOBBER"). servers에는 운영 `https://globber.world/api`, 개발 `https://dev.globber.world/api`, 로컬 `http://localhost:8080`이 적혀 있다.
+스펙 원본: `http://{개발 서버 IP}:8080/v3/api-docs` (OpenAPI, title "GLOBBER"). servers에는 운영 `https://globber.world/api`, 개발 `https://dev.globber.world/api`, 로컬 `http://localhost:8080`이 적혀 있다.
 
 ### 도시 API
 
@@ -99,7 +99,7 @@
 | 작업 위치 | PR #19(`feature/real-city-api`)에 이어서 커밋. 이 문서와 기존 산출물은 이어서 보완 |
 | 화면 분리 | 한 화면(`/cities`) 안의 탭으로 운영·개발 전환. 주소는 나누지 않음 |
 | 운영 쓰기 | 백엔드가 쓰기용 인증 수단을 주기 전까지 운영 탭의 추가·수정·삭제 버튼은 비활성화하고 안내 문구를 보여 준다 |
-| 개발 서버 주소 | IP 주소 서버(`http://54.180.101.234:8080` 계열) 사용. 실제 값은 문서·코드에 적지 않고 환경 변수로만 둔다 |
+| 개발 서버 주소 | IP 주소 서버(`http://{개발 서버 IP}:8080` 계열) 사용. 실제 값은 문서·코드에 적지 않고 환경 변수로만 둔다 |
 | 주소 관리 | 운영·개발 서버 주소를 각각 환경 변수로 관리해 코드 수정 없이 바꿀 수 있게 한다 |
 
 ## 확인된 사실 (orchestrator가 조회 요청으로 확인, 2026-11-09)
@@ -108,7 +108,7 @@
 | --- | --- | --- |
 | 운영 `https://globber.world/api` | `{base}/api/v1/cities/all` | 200, 4,204개 |
 | 개발(도메인) `https://dev.globber.world/api` | `{base}/api/v1/cities/all` | 200, 3,791개 |
-| 개발(IP) `http://54.180.101.234:8080` | `{base}/api/v1/cities/all` | 200, 3,791개 |
+| 개발(IP) `http://{개발 서버 IP}:8080` | `{base}/api/v1/cities/all` | 200, 3,791개 |
 
 - 1차 사이클 화면의 3,791개는 개발 서버 데이터였다. 운영 데이터는 4,204개다.
 - 현재 코드는 `CITY_API_BASE_URL` 하나만 쓰고, 목록 경로를 `{base}/api/v1/cities/all`, 토큰 발급을 `{base}/dev/test-login?email=`로 만든다. 운영 주소는 끝에 `/api`가 붙어야 한다(`https://globber.world/api/v1/cities/all`은 404).
@@ -191,3 +191,8 @@
 ## Bug Team 피드백 반영 필수
 
 없음 (`artifacts/bug-team/`에 postmortem 파일 없음).
+
+## 2026-11-09 후속 사용자 요청
+
+- “이번 작업에서 보완해”: D-2 국가명 차이 중복 누락 보완 승인.
+- 위치 찾기에 스피너 두 개와 하단 안내가 필요한지 질문. 버튼에만 진행 상태를 표시하도록 중복 안내 제거.
