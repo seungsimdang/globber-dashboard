@@ -46,3 +46,5 @@ export type ApiFail = {
   status: "fail";
   data: string;
 };
+
+export type CityServer = "prod" | "dev";

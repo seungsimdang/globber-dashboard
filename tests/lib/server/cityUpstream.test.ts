@@ -13,7 +13,7 @@ const valid = { cityName: "서울", countryName: "대한민국", lat: 37.5, lng:
 
 beforeEach(() => {
   vi.resetModules();
-  vi.stubEnv("CITY_API_BASE_URL", BASE);
+  vi.stubEnv("CITY_API_DEV_BASE_URL", BASE);
   vi.stubEnv("CITY_API_TEST_EMAIL", "test@example.com");
 });
 afterEach(() => {
@@ -77,7 +77,7 @@ describe("parseCityRequest", () => {
 describe("proxyCityApi", () => {
   const read = (r: Response) => r.json() as Promise<{ status: string; data: unknown }>;
   const get = async () =>
-    (await load()).proxyCityApi("/api/v1/cities/all", { method: "GET", authenticated: false, expect: "array" });
+    (await load()).proxyCityApi("/api/v1/cities/all", { server: "dev", method: "GET", authenticated: false, expect: "array" });
 
   it("상류 2xx는 success 래퍼로 통과시키고 no-store를 붙인다", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => json(200, { status: "success", data: [{ cityId: 1 }] })));
@@ -111,12 +111,12 @@ describe("proxyCityApi", () => {
   it("상류 400은 상류 메시지를, 404는 메시지가 없으면 기본 문구를 통과시킨다", async () => {
     const { proxyCityApi } = await load();
     vi.stubGlobal("fetch", vi.fn(async () => json(400, { status: "fail", data: "검색어를 입력해 주세요." })));
-    let res = await proxyCityApi("/x", { method: "GET", authenticated: false, expect: "array" });
+    let res = await proxyCityApi("/x", { server: "dev", method: "GET", authenticated: false, expect: "array" });
     expect(res.status).toBe(400);
     expect((await read(res)).data).toBe("검색어를 입력해 주세요.");
 
     vi.stubGlobal("fetch", vi.fn(async () => json(404, {})));
-    res = await proxyCityApi("/x", { method: "GET", authenticated: false, expect: "array" });
+    res = await proxyCityApi("/x", { server: "dev", method: "GET", authenticated: false, expect: "array" });
     expect(res.status).toBe(404);
     expect((await read(res)).data).toBe("대상을 찾을 수 없습니다.");
   });
@@ -141,7 +141,7 @@ describe("proxyCityApi", () => {
   });
 
   it("API 주소 환경 변수가 없으면 500이고 상류를 호출하지 않는다", async () => {
-    vi.stubEnv("CITY_API_BASE_URL", "");
+    vi.stubEnv("CITY_API_DEV_BASE_URL", "");
     const f = vi.fn();
     vi.stubGlobal("fetch", f);
     const res = await get();
@@ -151,7 +151,7 @@ describe("proxyCityApi", () => {
 
   describe("쓰기(authenticated)", () => {
     const post = async () =>
-      (await load()).proxyCityApi("/api/v1/cities", { method: "POST", authenticated: true, body: valid, expect: "object" });
+      (await load()).proxyCityApi("/api/v1/cities", { server: "dev", method: "POST", authenticated: true, body: valid, expect: "object" });
 
     it("토큰을 붙여 JSON body를 보낸다", async () => {
       const f = vi.fn(async (url: string) =>

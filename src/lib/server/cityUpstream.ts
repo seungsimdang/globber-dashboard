@@ -76,21 +76,24 @@ const readFailMessage = (body: unknown) => {
 const CONNECT_FAIL = "도시 서버에 연결할 수 없습니다.";
 const AUTH_FAIL = "서버 인증에 실패했습니다.";
 
+// 토큰은 개발 서버 전용이라 운영에는 authenticated: true를 타입으로 만들 수 없음
+// 개발 쓰기만 true이고 조회는 토큰 없이 보냄
 type ProxyOptions = {
   method: "GET" | "POST" | "PUT" | "DELETE";
-  // 쓰기 요청만 true이고 조회는 토큰 없이 보냄
-  authenticated: boolean;
   body?: CityRequest;
   expect: "array" | "object";
-};
+} & (
+  | { server: "prod"; authenticated: false }
+  | { server: "dev"; authenticated: boolean }
+);
 
 // 성공이면 ApiSuccess, 실패면 에러 매핑된 ApiFail 응답을 반환함
 export async function proxyCityApi(
   path: string,
-  { method, authenticated, body, expect }: ProxyOptions,
+  { server, method, authenticated, body, expect }: ProxyOptions,
 ): Promise<Response> {
   try {
-    const url = `${getCityApiBaseUrl()}${path}`;
+    const url = `${getCityApiBaseUrl(server)}${path}`;
     const call = (authorization?: string) =>
       fetch(url, {
         method,

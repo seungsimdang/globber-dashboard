@@ -1,19 +1,33 @@
-// 서버 전용: 상류 도시 API 쓰기용 토큰을 프로세스 메모리에만 보관함
+// 서버 전용: 개발 서버 쓰기용 토큰을 프로세스 메모리에만 보관함(운영 서버에는 토큰을 쓰지 않음)
 // 토큰·이메일·상류 주소는 로그와 응답에 노출하지 않음
+import type { CityServer } from "@/types/city";
 
 export class UpstreamConfigError extends Error {}
 export class UpstreamAuthError extends Error {}
 
 export const CITY_API_TIMEOUT_MS = 10_000;
 
-export const getCityApiBaseUrl = () => {
-  const baseUrl = process.env.CITY_API_BASE_URL;
-  if (!baseUrl) {
+const SERVER_ENV = {
+  prod: { name: "CITY_API_PROD_BASE_URL", label: "운영" },
+  dev: { name: "CITY_API_DEV_BASE_URL", label: "개발" },
+} as const;
+
+// 서버별 기준 주소를 요청 시점에 읽고, 비었거나 http(s) 주소가 아니면 설정 오류로 처리함
+export const getCityApiBaseUrl = (server: CityServer) => {
+  const { name, label } = SERVER_ENV[server];
+  const value = process.env[name];
+  let valid = false;
+  try {
+    valid = !!value && ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    valid = false;
+  }
+  if (!value || !valid) {
     throw new UpstreamConfigError(
-      "서버 설정 오류: 도시 API 주소가 설정되지 않았습니다.",
+      `서버 설정 오류: ${label} 서버 주소가 설정되지 않았습니다.`,
     );
   }
-  return baseUrl.replace(/\/+$/, "");
+  return value.replace(/\/+$/, "");
 };
 
 const getTestEmail = () => {
@@ -30,7 +44,7 @@ let accessToken: string | null = null;
 let inflight: Promise<string> | null = null;
 
 const requestToken = async () => {
-  const url = `${getCityApiBaseUrl()}/dev/test-login?email=${encodeURIComponent(getTestEmail())}`;
+  const url = `${getCityApiBaseUrl("dev")}/dev/test-login?email=${encodeURIComponent(getTestEmail())}`;
   let token: unknown;
   try {
     const response = await fetch(url, {

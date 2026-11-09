@@ -7,11 +7,11 @@ vi.mock("@/lib/session", () => ({ getSession: () => getSession() }));
 const valid = { cityName: "서울", countryName: "대한민국", lat: 37.5, lng: 127, countryCode: "KOR" };
 const ctx = (cityId: string) => ({ params: Promise.resolve({ cityId }) }) as never;
 const req = (method: string, type?: string, body?: string) =>
-  new Request("http://localhost/api/cities/1", { method, headers: type ? { "Content-Type": type } : undefined, body });
+  new Request("http://localhost/api/cities/1?server=dev", { method, headers: type ? { "Content-Type": type } : undefined, body });
 
 beforeEach(() => {
   vi.resetModules();
-  vi.stubEnv("CITY_API_BASE_URL", "http://upstream.test");
+  vi.stubEnv("CITY_API_DEV_BASE_URL", "http://upstream.test");
   vi.stubEnv("CITY_API_TEST_EMAIL", "test@example.com");
   getSession.mockResolvedValue({ username: "admin" });
 });

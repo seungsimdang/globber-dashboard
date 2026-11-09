@@ -1,3 +1,4 @@
+import { resolveCityServer } from "@/lib/server/cityServer";
 import { failResponse, parseCityRequest, proxyCityApi } from "@/lib/server/cityUpstream";
 import { withSession } from "@/lib/server/withSession";
 
@@ -10,6 +11,10 @@ const parseCityId = async ({ params }: Context) => {
 };
 
 export const PUT = withSession(async (request: Request, context: Context) => {
+  // 운영 쓰기 거부는 cityId·본문·환경 변수를 읽기 전에 처리함
+  const resolved = resolveCityServer(request, { write: true });
+  if ("response" in resolved) return resolved.response;
+
   const cityId = await parseCityId(context);
   if (!cityId) return failResponse(400, "올바르지 않은 도시 ID입니다.");
 
@@ -22,6 +27,7 @@ export const PUT = withSession(async (request: Request, context: Context) => {
   if (!parsed.ok) return failResponse(400, parsed.message);
 
   return proxyCityApi(`/api/v1/cities/${cityId}`, {
+    server: resolved.server,
     method: "PUT",
     authenticated: true,
     body: parsed.value,
@@ -29,11 +35,15 @@ export const PUT = withSession(async (request: Request, context: Context) => {
   });
 });
 
-export const DELETE = withSession(async (_request: Request, context: Context) => {
+export const DELETE = withSession(async (request: Request, context: Context) => {
+  const resolved = resolveCityServer(request, { write: true });
+  if ("response" in resolved) return resolved.response;
+
   const cityId = await parseCityId(context);
   if (!cityId) return failResponse(400, "올바르지 않은 도시 ID입니다.");
 
   return proxyCityApi(`/api/v1/cities/${cityId}`, {
+    server: resolved.server,
     method: "DELETE",
     authenticated: true,
     expect: "object",

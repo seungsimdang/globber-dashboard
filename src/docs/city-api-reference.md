@@ -4,6 +4,29 @@
 원본은 Swagger(`/v3/api-docs` OpenAPI "GLOBBER")이며, 이 대시보드는 아래 계약을
 Next 서버 경유(`/api/cities*` Route Handler)로 호출한다. 브라우저는 상류 주소를 알지 못한다.
 
+## 대상 서버와 환경 변수
+
+상류는 운영(`prod`)과 개발(`dev`) 두 서버다. 내부 엔드포인트는 모두 쿼리 `server=prod|dev`(소문자, 필수)를 받는다.
+누락·빈 값·중복·허용 밖 값은 400 `대상 서버를 확인할 수 없습니다.`이며 상류 호출이 없다.
+
+| 환경 변수 | 용도 |
+| --- | --- |
+| `CITY_API_PROD_BASE_URL` | 운영 기준 주소. 조회 전용, 토큰 없음 |
+| `CITY_API_DEV_BASE_URL` | 개발 기준 주소. 조회·쓰기·`/dev/test-login` |
+| `CITY_API_TEST_EMAIL` | 개발 서버 토큰 발급용 테스트 계정 이메일 |
+
+- 주소가 비었거나 http(s) 형식이 아니면 해당 서버 요청만 500 `서버 설정 오류: 운영|개발 서버 주소가 설정되지 않았습니다.`
+- `CITY_API_BASE_URL`은 제거됐고 폴백이 없다.
+
+| 내부 엔드포인트 | `server=prod` | `server=dev` |
+| --- | --- | --- |
+| GET `/api/cities` | 운영 상류 조회 | 개발 상류 조회 |
+| POST `/api/cities` | 403 | 개발 상류 쓰기(토큰) |
+| PUT·DELETE `/api/cities/{cityId}` | 403 | 개발 상류 쓰기(토큰) |
+
+- 운영 쓰기 403 문구: `운영 서버는 쓰기 인증 준비 전이라 조회만 할 수 있습니다.` 판정 순서는 세션(401), `server`(400), 운영 쓰기(403), 기존 검증, 상류 호출이다.
+- 운영 응답 형식·필드가 개발과 같은지는 확인 필요다.
+
 상세 설계와 에러 매핑은 Swagger 원본(`/v3/api-docs` OpenAPI "GLOBBER")을 기준으로 한다.
 
 ## 응답 래퍼

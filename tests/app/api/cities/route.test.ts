@@ -9,7 +9,7 @@ const json = (status: number, body: unknown) =>
 const valid = { cityName: "서울", countryName: "대한민국", lat: 37.5, lng: 127, countryCode: "KOR" };
 
 const req = (method: string, init: { type?: string; body?: string } = {}) =>
-  new Request("http://localhost/api/cities", {
+  new Request("http://localhost/api/cities?server=dev", {
     method,
     headers: init.type ? { "Content-Type": init.type } : undefined,
     body: init.body,
@@ -17,7 +17,7 @@ const req = (method: string, init: { type?: string; body?: string } = {}) =>
 
 beforeEach(() => {
   vi.resetModules();
-  vi.stubEnv("CITY_API_BASE_URL", "http://upstream.test");
+  vi.stubEnv("CITY_API_DEV_BASE_URL", "http://upstream.test");
   vi.stubEnv("CITY_API_TEST_EMAIL", "test@example.com");
   getSession.mockResolvedValue({ username: "admin" });
 });

@@ -11,7 +11,7 @@ const load = async () => import("@/lib/server/cityApiToken");
 
 beforeEach(() => {
   vi.resetModules();
-  vi.stubEnv("CITY_API_BASE_URL", BASE);
+  vi.stubEnv("CITY_API_DEV_BASE_URL", BASE);
   vi.stubEnv("CITY_API_TEST_EMAIL", "test@example.com");
 });
 afterEach(() => {
@@ -87,14 +87,14 @@ describe("withCityApiToken", () => {
 
 describe("getCityApiBaseUrl", () => {
   it("끝의 슬래시를 제거한다", async () => {
-    vi.stubEnv("CITY_API_BASE_URL", `${BASE}//`);
+    vi.stubEnv("CITY_API_DEV_BASE_URL", `${BASE}//`);
     const { getCityApiBaseUrl } = await load();
-    expect(getCityApiBaseUrl()).toBe(BASE);
+    expect(getCityApiBaseUrl("dev")).toBe(BASE);
   });
 
   it("주소가 없으면 설정 오류를 던진다", async () => {
-    vi.stubEnv("CITY_API_BASE_URL", "");
+    vi.stubEnv("CITY_API_DEV_BASE_URL", "");
     const { getCityApiBaseUrl, UpstreamConfigError } = await load();
-    expect(() => getCityApiBaseUrl()).toThrow(UpstreamConfigError);
+    expect(() => getCityApiBaseUrl("dev")).toThrow(UpstreamConfigError);
   });
 });
