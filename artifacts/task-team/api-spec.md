@@ -20,7 +20,7 @@ Next.js 문서 확인(orchestrator, 메인 체크아웃 `node_modules/next/dist/
 
 ## 1. 상류 계약 (실제 API, 확인됨)
 
-호스트: dev 서버 `http://54.180.101.234:8080` (평문 HTTP. `https://dev.globber.world/api/dev/test-login`은 HTML을 돌려줘 쓰지 못한다). 경로는 호스트 루트 기준이다(`/api/v1/cities*`, `/dev/test-login`).
+호스트: dev 서버 `http://54.180.101.234:8080` (평문 HTTP. `https://dev.globber.world/api/dev/test-login`은 HTML을 돌려줘 쓰지 못한다). 경로는 호스트 루트 기준이다(`/api/v1/cities*`, `/dev/test-login`). (2차 주석: 2차 절이 우선한다. 개발 서버 주소는 CITY_API_DEV_BASE_URL이고 운영 서버가 추가된다.)
 
 | 용도 | 메서드 경로 | 요청 | 성공 응답 `data` | 토큰 |
 | --- | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ type JwtTokenResponse = { accessToken: string; refreshToken: string };
 | `CITY_API_TEST_EMAIL` | `/dev/test-login`에 넘길 테스트 계정 이메일 | `test@example.com` |
 
 - 실제 호스트·이메일을 `.env.example`, 코드, 문서에 적지 않는다(호스트는 이 명세에 한해 상류 계약 설명용으로만 적었고 코드·`.env.example`에는 넣지 않는다).
-- `CITY_API_BASE_URL` 누락: 모든 도시 엔드포인트가 500 `서버 설정 오류: 도시 API 주소가 설정되지 않았습니다.`
+- `CITY_API_BASE_URL` 누락: 모든 도시 엔드포인트가 500 `서버 설정 오류: 도시 API 주소가 설정되지 않았습니다.` (2차 주석: CITY_API_BASE_URL은 제거되고 서버별 변수로 대체된다. 2차 절 2-B 참조.)
 - `CITY_API_TEST_EMAIL` 누락: 쓰기 엔드포인트만 500 `서버 설정 오류: 테스트 계정이 설정되지 않았습니다.` 조회는 영향 없다.
 - 두 변수 모두 요청 시점에 읽는다(모듈 로드 시점에 throw하지 않는다. 빌드가 깨지지 않도록).
 - 테스트 계정 이메일 확보 경로는 사용자 확인 필요(요구사항 6번 메모). 이 값이 없으면 쓰기는 구현돼도 실제 검증이 불가능하다.
@@ -76,7 +76,7 @@ type JwtTokenResponse = { accessToken: string; refreshToken: string };
 
 ### 2.3 내부 엔드포인트 (브라우저가 호출)
 
-모든 응답은 상류와 같은 래퍼를 쓴다: 성공 `ApiSuccess<T>`, 실패 `ApiFail`. 모든 응답에 `Cache-Control: no-store`. 모든 핸들러는 `withSession`으로 감싼다. 요청 body는 JSON.
+모든 응답은 상류와 같은 래퍼를 쓴다: 성공 `ApiSuccess<T>`, 실패 `ApiFail`. 모든 응답에 `Cache-Control: no-store`. 모든 핸들러는 `withSession`으로 감싼다. 요청 body는 JSON. (2차 주석: 모든 요청에 server 쿼리 파라미터가 필수이고 운영 쓰기는 403이다. 2차 절 2-A, 2-C 참조.)
 
 | 메서드 경로 | 요청 | 성공 | 상류 호출 |
 | --- | --- | --- | --- |
@@ -106,7 +106,7 @@ type JwtTokenResponse = { accessToken: string; refreshToken: string };
   2. `call(헤더값)` 실행. 응답이 401이면 사용한 토큰이 아직 현재 토큰일 때만 `accessToken = null`로 비우고 재발급 후 `call`을 정확히 1회 재시도한다. 재시도도 401이면 재발급 루프 없이 `UpstreamAuthError`를 던진다.
   3. 토큰을 비교해서 비우므로, 먼저 도착한 요청이 이미 새 토큰을 받았다면 늦게 401을 받은 요청은 새 토큰으로 재시도만 한다.
 - 동시 재발급 합치기: `issue()`는 `inflight`가 있으면 그 Promise를 반환하고, 없으면 새로 만들어 `inflight`에 넣고 `finally`에서 `null`로 되돌린다. 요청 수와 무관하게 동시 발급은 1건이다.
-- 발급 호출: `POST {CITY_API_BASE_URL}/dev/test-login?email={encodeURIComponent(CITY_API_TEST_EMAIL)}`, 본문 없음. 응답 `ApiSuccess<JwtTokenResponse>`에서 `data.accessToken`만 쓴다. `refreshToken`은 저장하지 않는다(재발급은 test-login 재호출로 한다. `POST /reissue`는 쿠키가 필요해 쓰지 않는다).
+- 발급 호출: `POST {CITY_API_BASE_URL}/dev/test-login?email={encodeURIComponent(CITY_API_TEST_EMAIL)}`, 본문 없음. 응답 `ApiSuccess<JwtTokenResponse>`에서 `data.accessToken`만 쓴다. `refreshToken`은 저장하지 않는다(재발급은 test-login 재호출로 한다. `POST /reissue`는 쿠키가 필요해 쓰지 않는다). (2차 주석: 발급 URL은 CITY_API_DEV_BASE_URL 기준이며 개발 서버 전용이다. 2차 절 2-D 참조.)
 - 발급 실패(네트워크 오류, 비 2xx, 응답에 `accessToken` 없음): `UpstreamAuthError`. 이메일 쿼리 문자열이 담긴 URL, 토큰, 상류 본문을 에러 메시지·로그에 넣지 않는다.
 - `Authorization` 헤더 값: `accessToken`이 이미 `Bearer `로 시작하면 그대로, 아니면 `Bearer ${accessToken}`을 쓴다. `Bearer` 접두사 포함 여부와 스킴 자체가 `Bearer`인지는 확인 필요(A-2). 이 분기는 어느 쪽이어도 같은 헤더가 나가게 하는 방어이며, 실제 서버에서 쓰기를 검증하기 전에는 동작을 확정할 수 없다.
 - 토큰 만료 시간은 확인 필요(A-2). 만료 시각을 추정하지 않고 401 응답으로만 갱신한다.
@@ -140,7 +140,7 @@ apiDelete<T>(path: string): Promise<T>
 
 ### 3.2 `src/services/cityService.ts` (재작성)
 
-도메인 타입만 반환한다(`react-query.md` 1번). 시그니처는 현재와 같고 `searchCities`만 제거한다.
+도메인 타입만 반환한다(`react-query.md` 1번). 시그니처는 현재와 같고 `searchCities`만 제거한다. (2차 주석: 시그니처 첫 인자에 server가 추가된다. 2차 절 2-E 참조.)
 
 ```ts
 getCities(): Promise<City[]>                                         // apiGet<CityResponse[]>("/api/cities") -> 변환
@@ -168,7 +168,7 @@ deleteCity(cityId: string): Promise<void>                            // apiDelet
 ### 3.5 검색 = 클라이언트 필터링 (B-1)
 
 - `GET /api/cities?keyword=` 같은 서버 검색 엔드포인트는 만들지 않는다. 서비스에 `searchCities`를 두지 않는다.
-- `src/hooks/useCities.ts`: `citiesQueryOptions()`를 인자 없이 `getCities`로 구성하고 `queryKeys.cities.list`도 keyword 인자를 없앤다(`["cities","list"]`). `useCities(keyword)`는 `select`에서 필터링한다. 같은 목록 캐시를 검색어마다 재사용하므로 타이핑 중 요청이 없고, 이전 응답이 늦게 도착해 덮어쓰는 문제가 생기지 않는다.
+- `src/hooks/useCities.ts`: `citiesQueryOptions()`를 인자 없이 `getCities`로 구성하고 `queryKeys.cities.list`도 keyword 인자를 없앤다(`["cities","list"]`). `useCities(keyword)`는 `select`에서 필터링한다. 같은 목록 캐시를 검색어마다 재사용하므로 타이핑 중 요청이 없고, 이전 응답이 늦게 도착해 덮어쓰는 문제가 생기지 않는다. (2차 주석: queryKeys.cities.list는 서버별 키 함수가 된다. 2차 절 2-E 참조.)
 - 필터 규칙(기존 `searchMockCities`와 동일, 코드 확인): `keyword.trim().toLowerCase()`가 비면 전체, 아니면 `cityName.toLowerCase().includes(keyword)`. 서버 순서를 재정렬하지 않는다. 국가명까지 검색 대상에 넣을지는 제품 결정이라 이 명세는 기존 동작(도시명만)을 따른다. 순수 함수 `filterCities(cities: City[], keyword: string): City[]`를 `src/utils/cityFilter.ts`에 둔다(제안).
 - `useCities`는 `select`로 필터링하므로 `data`가 필터된 결과다. 전체 건수가 필요한 UI가 없으면 그대로 쓴다.
 
@@ -218,7 +218,7 @@ deleteCity(cityId: string): Promise<void>                            // apiDelet
 - `src/services/cityService.ts` (재작성, 3.2), `src/types/city.ts` (3.3), `src/utils/countryFlagMapping.ts` (3.4)
 - `src/hooks/useCities.ts`, `src/hooks/useCityMutations.ts`, `src/lib/react-query/query-keys.ts` (3.5, 3.6, 타입명 변경)
 - `src/components/cities/CityFormModal.tsx`: `COUNTRY_CODE_PATTERN`을 `^[A-Za-z]{3}$`로, 오류 문구 예시를 `KOR`로, `NAME_MAX_LENGTH`와 `maxLength` 속성 및 100자 검증 제거(B-5). UI 문구·표시는 frontend-developer 소관.
-- `.env.example`: `CITY_API_BASE_URL`, `CITY_API_TEST_EMAIL` 추가(가짜 값)
+- `.env.example`: `CITY_API_BASE_URL`, `CITY_API_TEST_EMAIL` 추가(가짜 값) (2차 주석: 변수가 CITY_API_PROD_BASE_URL, CITY_API_DEV_BASE_URL, CITY_API_TEST_EMAIL로 바뀐다. 2차 절 2-B 참조.)
 - `src/docs/city-api-reference.md`: 실제 Swagger 스펙(1절) 기준으로 갱신(B-9)
 - `docs/agent-rules/project.md`("백엔드" 항목), `react-query.md`(계층 1행, 5번 목업 지연 항목), `project-structure.md`(서문, 디렉터리 표의 `mocks/`, 핵심 규칙 2~4번), `nextjs.md` 6번(목업 서술): 목업 서술을 실제 연동에 맞게 갱신. `src/lib/server/` 위치 추가
 - 소스 주석 중 "목업"을 언급하는 곳(`useCityMutations.ts` 등)은 실제 동작에 맞게 정리
@@ -241,6 +241,122 @@ deleteCity(cityId: string): Promise<void>                            // apiDelet
 4. 상류 `status` 필드의 성공 값이 `"success"` 외에 있는지(`ApiSuccess.status`를 `string`으로 둔 이유).
 5. 쓰기 직후 `GET /api/v1/cities/all`이 상류 쪽 캐시(`max-age=86400, public`)로 낡은 목록을 돌려주는지. 이 서버는 `no-store`로 호출하지만 상류 앞단 캐시가 있으면 영향을 받을 수 있다.
 6. 배포 환경(서버리스 여부)과 `CITY_API_BASE_URL`·`CITY_API_TEST_EMAIL` 설정 방법, 테스트 계정 이메일 확보 경로.
-7. 상류가 평문 HTTP라 Next 서버와 상류 사이에서 토큰이 암호화되지 않는다. dev 서버 한정이며 운영 연동은 범위 밖(`test-login`이 운영에서 404).
+7. 상류가 평문 HTTP라 Next 서버와 상류 사이에서 토큰이 암호화되지 않는다. dev 서버 한정이며 운영 연동은 범위 밖(`test-login`이 운영에서 404). (2차 주석: 운영 조회는 2차에서 범위 안이 됐고 운영 쓰기는 403으로 거부한다. 2차 절 2-C 참조.)
 8. `src/lib/server/` 위치, 클라이언트 필터가 도시명만 보는 것(국가명 포함 여부), 중복 비교의 대소문자 무시 기준: 제안이며 승인 필요.
 9. Next.js 16 Route Handler 문법(`params` Promise 등): 이 worktree에 `node_modules`가 없어 공식 문서로 확인하지 못했다.
+
+---
+
+# 2차: 운영·개발 서버 분리
+
+입력: `requirements.md`의 "2차" 절(2-9 확정 결정). 이 절은 1차 본문과 충돌하면 우선한다. 표기는 1차와 같다("확인됨", "코드 확인", "제안", "확인 필요"). 이 절은 명세만 정하며 코드는 아직 바뀌지 않았다. 실제 주소·이메일 값은 적지 않는다.
+
+사용자 승인 (2026-11-09): 이 절의 기본안(`server` 쿼리 방식, 400·403 상태 코드, 서버 이름이 들어간 500 문구, URL 형식 검증, `src/lib/server/cityServer.ts` 신규)을 그대로 승인.
+
+## 2-A. 대상 서버 지정
+
+- 방식(제안): 모든 `/api/cities*` 요청에 쿼리 파라미터 `server`를 필수로 붙인다. 허용 값은 소문자 `prod`, `dev` 두 개뿐이다(대소문자 구분, 허용 목록 비교). 예: `GET /api/cities?server=prod`, `PUT /api/cities/12?server=dev`.
+- 임의 URL·호스트는 받지 않는다. 클라이언트가 보낸 값은 허용 목록 비교에만 쓰고 주소 조립에 쓰지 않는다(SSRF 방지). 주소는 서버 환경 변수에서만 읽는다.
+- `server` 누락, 빈 값, 중복 지정(`server=prod&server=dev`), 허용 목록 밖 값: 400 `대상 서버를 확인할 수 없습니다.` 기본값(개발 등)으로 대체하지 않으며 상류 호출·토큰 발급이 0회다.
+- 타입(제안): `src/types/city.ts`에 `export type CityServer = "prod" | "dev"`를 두고 서버·클라이언트가 함께 쓴다. 파라미터 파싱은 `src/lib/server/` 안 한 곳(예: `cityServer.ts`의 `parseCityServer(request): CityServer | null`)에서 하고 세 핸들러가 공유한다.
+- 판정 순서(모든 메서드 공통): `withSession`(401) -> `server` 검증(400) -> 운영 쓰기 거부(403, 2-C) -> 기존 검증(`cityId` 400, content-type 415, 본문 400) -> 상류 호출. 앞 단계에서 실패하면 뒤 단계는 실행하지 않는다.
+
+내부 엔드포인트(1차 2.3의 경로에 `server`가 붙는다. 성공 본문과 에러 매핑은 1차 4절 그대로).
+
+| 메서드 경로 | `server=prod` | `server=dev` |
+| --- | --- | --- |
+| GET `/api/cities` | 운영 상류 조회(토큰 없음) | 개발 상류 조회(토큰 없음) |
+| POST `/api/cities` | 403 거부 | 1차와 같음(토큰) |
+| PUT `/api/cities/[cityId]` | 403 거부 | 1차와 같음(토큰) |
+| DELETE `/api/cities/[cityId]` | 403 거부 | 1차와 같음(토큰) |
+
+## 2-B. 환경 변수
+
+`NEXT_PUBLIC_` 접두사 금지, 요청 시점에 읽는다(모듈 로드 시점에 throw하지 않는다).
+
+| 이름 | 용도 | `.env.example` 예시(가짜 값) |
+| --- | --- | --- |
+| `CITY_API_PROD_BASE_URL` | 운영 상류 기준 주소. 뒤에 `/api/v1/cities...`를 붙인다. 운영은 값이 `/api`로 끝난다(2-9 확정). 끝 슬래시 없음 | `https://prod.example.com/api` |
+| `CITY_API_DEV_BASE_URL` | 개발 상류 기준 주소(호스트 루트). 뒤에 `/api/v1/cities...`와 `/dev/test-login`을 붙인다. 끝 슬래시 없음 | `http://127.0.0.1:8080` |
+| `CITY_API_TEST_EMAIL` | 개발 서버 `/dev/test-login`에 넘길 테스트 계정 이메일. 개발 쓰기 전용 | `test@example.com` |
+
+- `CITY_API_BASE_URL`은 제거한다. 코드와 `.env.example`에서 지우고 폴백을 두지 않는다(남기면 서버 구분이 흐려진다). 배포 환경(Vercel 등)은 새 두 변수 설정과 기존 변수 삭제가 필요하다(사용자/배포 담당).
+- 상류 경로(`/api/v1/cities/all`, `/api/v1/cities`, `/api/v1/cities/{id}`)는 두 서버 공통 상수이고 서버별 차이는 기준 주소 값에만 둔다. 후행 슬래시는 제거한다(현재 `replace(/\/+$/, "")` 동작 유지). 주소는 문자열 이어붙이기로 조립한다(`new URL(path, base)`는 base의 `/api` 경로를 지울 수 있어 쓰지 않는다).
+- 형식 검증(제안): 값이 빈 문자열이거나 `new URL()`로 파싱되지 않거나 프로토콜이 `http:`/`https:`가 아니면 누락과 같은 설정 오류로 처리한다.
+- 누락·오류 응답은 모두 500이며 `UpstreamConfigError` 경로를 쓴다(접두사 `서버 설정 오류:` 유지). 변수 이름·주소 값은 메시지에 넣지 않고 서버 이름(운영/개발)만 넣는다.
+
+| 상황 | 영향 | 응답 |
+| --- | --- | --- |
+| `CITY_API_PROD_BASE_URL` 누락·오류 | 운영 대상 요청만 실패. 개발은 정상 | 500 `서버 설정 오류: 운영 서버 주소가 설정되지 않았습니다.` |
+| `CITY_API_DEV_BASE_URL` 누락·오류 | 개발 대상 요청(조회·쓰기·토큰 발급)만 실패. 운영 조회는 정상 | 500 `서버 설정 오류: 개발 서버 주소가 설정되지 않았습니다.` |
+| `CITY_API_TEST_EMAIL` 누락 | 개발 쓰기만 실패. 양쪽 조회는 정상 | 500 `서버 설정 오류: 테스트 계정이 설정되지 않았습니다.` (1차 문구 유지) |
+| 셋 다 누락 | 모든 도시 요청이 500. 앱 기동은 크래시하지 않음 | 위 문구 |
+
+개발 쓰기의 검사 순서는 주소 검증 -> 이메일 검증 -> 토큰 발급이다. 운영 쓰기는 2-C에서 환경 변수 검사 전에 거부하므로 운영 주소가 없어도 403이다.
+
+## 2-C. 운영 쓰기 거부
+
+- 대상: `server=prod`인 POST `/api/cities`, PUT·DELETE `/api/cities/[cityId]`.
+- 응답: 403 `운영 서버는 쓰기 인증 준비 전이라 조회만 할 수 있습니다.` (2-9 확정 문구 그대로, `ApiFail` 래퍼, `Cache-Control: no-store`).
+- 위치: `withSession` 통과 직후, `server` 검증 직후이며 본문 읽기·`cityId` 검증·환경 변수 읽기보다 앞이다. 상류 `fetch` 0회, 토큰 발급 `fetch` 0회이고 잘못된 본문도 400/415가 아니라 403이 우선한다. 세션이 없으면 401이 우선한다(1차 유지).
+- 운영 쓰기를 허용하는 플래그·환경 변수·우회 경로는 만들지 않는다(범위 밖).
+- 구현 지침(제안): `proxyCityApi` 옵션을 `{ server: "prod"; authenticated: false }`와 `{ server: "dev"; authenticated: boolean }`의 판별 유니온으로 두어 운영에 `authenticated: true`를 타입으로 만들 수 없게 한다. 핸들러의 403 가드는 런타임 방어선으로 별도 유지한다.
+
+## 2-D. 토큰은 개발 서버 전용
+
+- `cityApiToken.ts`의 토큰 변수(`accessToken`, `inflight`)는 개발 서버 하나만 가리킨다. 서버 인자를 받지 않고 개발 기준 주소만 읽는다. 발급 URL은 `{CITY_API_DEV_BASE_URL}/dev/test-login?email=...`로만 만든다. 운영 주소로 test-login을 호출하지 않는다.
+- 운영 요청(조회 포함): `Authorization` 헤더 없음, 테스트 이메일 읽기 없음, 토큰 모듈 호출 없음.
+- `withCityApiToken`(401이면 재발급 후 정확히 1회 재시도, 재시도도 401이면 `UpstreamAuthError` -> 502 `서버 인증에 실패했습니다.`)은 개발 호출에서만 쓴다. 동시 발급 합치기와 토큰 비교 후 비우기는 1차 그대로다.
+- 상류 주소를 바꾸고 재시작하면 메모리 토큰이 사라지므로 이전 주소 토큰이 재사용되지 않는다. 실행 중 환경 변수가 바뀌는 경우는 지원하지 않는다(제안).
+- 토큰·이메일·주소는 로그·응답·에러 메시지에 노출하지 않는다(1차 유지).
+
+## 2-E. 클라이언트 계층
+
+서비스(`src/services/cityService.ts`)는 첫 인자로 서버를 받는다. 반환 타입은 그대로다.
+
+```ts
+getCities(server: CityServer): Promise<City[]>                                      // apiGet(`/api/cities?server=${server}`)
+addCity(server: CityServer, params: CityRequest): Promise<City>                     // apiPost
+updateCity(server: CityServer, cityId: string, params: CityRequest): Promise<City>  // apiPut(`/api/cities/${encodeURIComponent(cityId)}?server=${server}`)
+deleteCity(server: CityServer, cityId: string): Promise<void>                       // apiDelete
+```
+
+- 쓰기 함수도 `CityServer` 전체를 받는다(운영 쓰기는 UI가 막고 서버가 403으로 거부한다). 호출 측이 서버를 빼먹지 못하도록 기본값을 두지 않는다.
+- `queryKeys`(`src/lib/react-query/query-keys.ts`, 현재 `all`과 상수 `list`):
+
+```ts
+cities: {
+  all: ["cities"] as const,
+  list: (server: CityServer) => ["cities", "list", server] as const,
+}
+```
+
+- 훅: `citiesQueryOptions(server)`, `useCities(server, keyword)`. 쓰기 훅 `useAddCityMutation(server)`, `useUpdateCityMutation(server)`, `useDeleteCityMutation(server)`는 `queryKeys.cities.list(server)`만 invalidate한다(현재의 `cities.all` 무효화는 운영 캐시까지 건드리므로 쓰지 않는다). 중복 사전 검사의 `getQueryData`도 같은 서버 키를 읽는다.
+- 이전 서버의 늦은 응답은 키가 달라 현재 탭 캐시를 덮어쓰지 않는다. 탭 전환 UI·모달 중 전환 차단·검색어 유지·서버 라벨은 frontend-developer 소관이며 이 명세는 서비스·훅의 `server` 인자 계약만 정한다.
+
+## 2-F. 영향받는 기존 테스트 (목록만, 작성 담당 배정 없음)
+
+`tests/` 아래 grep(`cityService`, `queryKeys`, `citiesQueryOptions`, `CITY_API`, 서버 모듈 import) 기준이다.
+
+- `tests/app/api/cities/route.test.ts`, `tests/app/api/cities/cityId/route.test.ts`: `server` 없는 요청과 `CITY_API_BASE_URL` 설정이 깨진다.
+- `tests/lib/server/cityApiToken.test.ts`: 단일 `CITY_API_BASE_URL` 기반 단언이 `CITY_API_DEV_BASE_URL`로 바뀐다.
+- `tests/lib/server/cityUpstream.test.ts`: `proxyCityApi` 옵션에 `server`가 추가된다.
+- `tests/services/cityService.test.ts`: 호출 시그니처(첫 인자 서버)와 요청 URL(`?server=`)이 바뀐다.
+- `tests/hooks/useCityMutations.test.tsx`: 서비스 모킹 시그니처, `citiesQueryOptions().queryKey` 사용, invalidate 대상 키.
+- `tests/components/CityFormModal.test.tsx`, `tests/components/DeleteConfirmDialog.test.tsx`: `citiesQueryOptions().queryKey` 시딩과 실제 서비스 경로의 fetch URL 단언.
+- `tests/test-utils/renderWithProviders.tsx`: `useCities`/`useCityMutations` 사용 컴포넌트용 래퍼라 영향 여부는 실행으로 확인 필요.
+- `tests/utils/cityErrorMessage.test.ts`: 403 문구·서버 라벨을 `cityErrorMessage`에 추가하는 경우에만 영향.
+
+## 2-G. 변경 대상 파일 (제안)
+
+`src/lib/server/cityApiToken.ts`(서버별 주소 함수, 토큰은 개발 전용), `src/lib/server/cityUpstream.ts`(`server` 옵션), `src/lib/server/cityServer.ts`(신규, 파싱), 두 Route Handler, `src/types/city.ts`(`CityServer`), `src/services/cityService.ts`, `src/hooks/useCities.ts`, `src/hooks/useCityMutations.ts`, `src/lib/react-query/query-keys.ts`, `.env.example`, `src/docs/city-api-reference.md`, `docs/agent-rules/project.md`(백엔드 항목).
+
+## 2-H. 확인 필요 (사실로 쓰지 않음)
+
+1. 운영 응답 envelope(`{status, data}`)와 필드가 개발과 같은지. 현재 검증(`data`가 배열)이 운영에서 통과하는지는 운영 조회로 확인해야 한다(요구사항 C-5).
+2. 운영 조회 경로 `{운영 기준 주소}/api/v1/cities/all`(기준 주소가 `/api`로 끝남)은 2-9 결정을 따른 것이며 이 작업에서 직접 호출로 재확인하지 않았다.
+3. 운영·개발 간 도시 id의 동일성(C-2). 서버별 캐시 분리로 가정을 피한다.
+4. 운영 서버 호출 허용량(4,204개 전체 조회, C-6)과 `Cache-Control`/ETag 동작.
+5. 1차 이월: 개발 서버 쓰기 동작(토큰 만료, `Bearer` 접두사, 역할 검사, 중복·없는 id 응답, C-3).
+6. 개발(IP)과 개발(도메인)이 같은 서버인지(C-1). 이 명세의 개발은 IP 서버 하나다.
+7. 배포 환경 변수 재설정 절차(C-7).
