@@ -14,6 +14,7 @@
    `src/proxy.ts`(Next.js 16의 `middleware.ts` 대체)에서 일괄 처리한다 - 개별
    Server Action도 자체적으로 세션을 검증한다(Proxy만 믿지 않는다).
 4. **`<Image>`는 `width`/`height` 명시 또는 `fill`**. `<img>` 직접 사용 금지.
-5. **클라이언트 HTTP는 `src/lib/apiClient.ts`**를 통해서만 호출한다(목업이어도 동일 경로 유지).
-6. **Server Component에서 목업 상태를 직접 import 금지** - 목업 데이터는 클라이언트
-   서비스 레이어(`"use client"` 경계 안쪽 또는 API-shape 함수)를 통해서만 접근한다.
+5. **클라이언트 HTTP는 `src/lib/apiClient.ts`**를 통해서만 호출한다(브라우저는 상류 API가 아니라 Next 서버의 내부 엔드포인트 `/api/cities*`만 호출한다).
+6. **상류 API 호출은 서버 전용 모듈(`src/lib/server/`)에서만** - 상류 주소·토큰·테스트 계정
+   이메일은 서버 환경 변수로만 다루고 `"use client"` 파일에서 import하지 않는다. 인증이 필요한
+   Route Handler(`src/app/api/**`)는 `withSession`으로 감싼다(`src/proxy.ts` matcher는 `api`를 제외한다).
