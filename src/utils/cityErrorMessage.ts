@@ -97,7 +97,6 @@ export const serverMessages = (server: CityServer) => {
 
 /** 국가 선택과 위치 찾기 화면 문구 */
 export const geocodeMessages = {
-  loading: "위치를 찾는 중...",
   empty: "검색 결과가 없습니다. 도시명을 확인하거나 위도·경도를 직접 입력해주세요.",
   // 네트워크·상류 오류·시간 초과·요청 제한은 원인별로 구분하지 않음
   failed: "위치를 찾지 못했습니다. 잠시 후 다시 시도하거나 위도·경도를 직접 입력해주세요.",

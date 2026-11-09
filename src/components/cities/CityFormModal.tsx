@@ -1,7 +1,7 @@
 "use client";
 
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
-import { Info, Loader2, MapPin } from "lucide-react";
+import { Info, MapPin } from "lucide-react";
 import { CountryCombobox } from "@/components/cities/CountryCombobox";
 import { Button } from "@/components/common/Button";
 import { Dialog } from "@/components/common/Dialog";
@@ -363,12 +363,6 @@ export const CityFormModal = ({ server, open, mode, city, onOpenChange }: CityFo
           </div>
 
           <div aria-live="polite">
-            {geocode.isPending ? (
-              <p className="flex items-center gap-1 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {geocodeMessages.loading}
-              </p>
-            ) : null}
             {geocode.isError ? (
               <p role="alert" className="flex items-center gap-1 text-sm text-red-700">
                 <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
