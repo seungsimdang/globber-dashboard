@@ -94,7 +94,10 @@ export const CityFormModal = ({ open, mode, city, onOpenChange }: CityFormModalP
   const addCityMutation = useAddCityMutation();
   const updateCityMutation = useUpdateCityMutation();
 
-  const [values, setValues] = useState<FormValues>(EMPTY_FORM);
+  // 처음부터 open=true로 마운트돼도 edit 모드 초기값을 채움
+  const [values, setValues] = useState<FormValues>(() =>
+    open && mode === "edit" && city ? toFormValues(city) : EMPTY_FORM,
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const cityNameInputRef = useRef<HTMLInputElement>(null);
