@@ -85,14 +85,33 @@ export const serverMessages = (server: CityServer) => {
     searchEmpty: (keyword: string) => `${label} 서버에서 '${keyword}'에 대한 검색 결과가 없습니다.`,
     count: (shown: number, total: number, filtered: boolean) =>
       filtered
-        ? `${label} 서버 검색 결과 ${shown.toLocaleString("ko-KR")}개 / 전체 ${total.toLocaleString("ko-KR")}개`
-        : `${label} 서버 전체 ${total.toLocaleString("ko-KR")}개`,
+        ? `검색 결과 ${shown.toLocaleString("ko-KR")}개 / 전체 ${total.toLocaleString("ko-KR")}개`
+        : `전체 ${total.toLocaleString("ko-KR")}개`,
     listConfigError: `${label} 서버 설정이 올바르지 않아 목록을 불러올 수 없습니다. 관리자에게 문의해주세요.`,
     added: `${label} 서버에 도시가 추가되었습니다`,
     updated: `${label} 서버의 도시가 수정되었습니다`,
     deleted: `${label} 서버에서 도시가 삭제되었습니다`,
     titlePrefix: `[${label}] `,
   };
+};
+
+/** 국가 선택과 위치 찾기 화면 문구 */
+export const geocodeMessages = {
+  loading: "위치를 찾는 중...",
+  empty: "검색 결과가 없습니다. 도시명을 확인하거나 위도·경도를 직접 입력해주세요.",
+  // 네트워크·상류 오류·시간 초과·요청 제한은 원인별로 구분하지 않음
+  failed: "위치를 찾지 못했습니다. 잠시 후 다시 시도하거나 위도·경도를 직접 입력해주세요.",
+  selected: (name: string) => `선택한 위치: ${name}`,
+  attributionPrefix: "© ",
+  attributionLinkText: "OpenStreetMap 기여자",
+  attributionLinkLabel: "OpenStreetMap 기여자 (새 창)",
+  needCity: "도시명을 입력하면 위치를 찾을 수 있습니다.",
+  needCountry: "국가를 선택하면 위치를 찾을 수 있습니다.",
+  hint: "위치 찾기로 좌표를 채우거나 아래에 직접 입력할 수 있습니다.",
+  unlistedCountry: (code: string) => `기존 국가코드 ${code}은(는) 목록에 없습니다. 국가를 다시 선택해주세요.`,
+  noCountryMatch: "일치하는 국가가 없습니다.",
+  countryCount: (count: number) => `${count}개 국가`,
+  countryRequired: "국가를 목록에서 선택해주세요",
 };
 
 /** 목록 조회 오류 문구, 설정 오류는 서버 전용 문구이고 나머지는 앞에 서버 이름을 붙임 */

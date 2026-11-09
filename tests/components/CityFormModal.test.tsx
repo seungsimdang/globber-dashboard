@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { CityFormModal } from "@/components/cities/CityFormModal";
 import { citiesQueryOptions } from "@/hooks/useCities";
 import type { City } from "@/types/city";
@@ -56,16 +56,17 @@ const createClientWithCities = (cities: City[]) => {
   return client;
 };
 
+// 국가는 검색어를 입력하고 목록에서 항목을 눌러 선택한다
+const selectCountry = (keyword: string, optionName: string) => {
+  fireEvent.change(screen.getByLabelText(/국가명/), { target: { value: keyword } });
+  fireEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: new RegExp(optionName) }));
+};
+
 const fillValidForm = (overrides: Partial<Record<string, string>> = {}) => {
   fireEvent.change(screen.getByLabelText(/도시명/), {
     target: { value: overrides.cityName ?? "Busan" },
   });
-  fireEvent.change(screen.getByLabelText(/국가명/), {
-    target: { value: overrides.countryName ?? "South Korea" },
-  });
-  fireEvent.change(screen.getByLabelText(/국가코드/), {
-    target: { value: overrides.countryCode ?? "KOR" },
-  });
+  selectCountry(overrides.countryKeyword ?? "KOR", overrides.countryName ?? "대한민국");
   fireEvent.change(screen.getByLabelText(/위도/), {
     target: { value: overrides.lat ?? "35.1796" },
   });
@@ -99,8 +100,7 @@ describe("CityFormModal - create mode (F3)", () => {
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     expect(screen.getByText("도시명을 입력해주세요")).toBeInTheDocument();
-    expect(screen.getByText("국가명을 입력해주세요")).toBeInTheDocument();
-    expect(screen.getByText("국가코드는 영문 3자(예: KOR)로 입력해주세요")).toBeInTheDocument();
+    expect(screen.getByText("국가를 목록에서 선택해주세요")).toBeInTheDocument();
     expect(screen.getByText("위도는 -90~90 사이의 숫자여야 합니다")).toBeInTheDocument();
     expect(screen.getByText("경도는 -180~180 사이의 숫자여야 합니다")).toBeInTheDocument();
 
@@ -126,15 +126,6 @@ describe("CityFormModal - create mode (F3)", () => {
 
     expect(screen.getByText("위도는 -90~90 사이의 숫자여야 합니다")).toBeInTheDocument();
     expect(screen.getByText("경도는 -180~180 사이의 숫자여야 합니다")).toBeInTheDocument();
-  });
-
-  it("국가코드가 alpha-3 형식이 아니면 검증 오류를 표시한다", () => {
-    renderWithProviders(<CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />);
-
-    fillValidForm({ countryCode: "KR" });
-    fireEvent.click(screen.getByRole("button", { name: "추가" }));
-
-    expect(screen.getByText("국가코드는 영문 3자(예: KOR)로 입력해주세요")).toBeInTheDocument();
   });
 
   it("에러 표시된 필드는 값 변경 즉시(onChange) 재검증되어 에러가 해제된다", () => {
@@ -164,7 +155,7 @@ describe("CityFormModal - create mode (F3)", () => {
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({
       cityName: "Busan",
-      countryName: "South Korea",
+      countryName: "대한민국",
       countryCode: "KOR",
       lat: 35.1796,
       lng: 129.0756,
@@ -175,10 +166,10 @@ describe("CityFormModal - create mode (F3)", () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: savedCity }));
     renderWithProviders(
       <CityFormModal server="dev" open mode="create" onOpenChange={vi.fn()} />,
-      createClientWithCities([seoul, tokyo]),
+      createClientWithCities([{ ...seoul, country: "대한민국" }, tokyo]),
     );
 
-    fillValidForm({ cityName: "Seoul", countryName: "South Korea" });
+    fillValidForm({ cityName: "Seoul", countryName: "대한민국" });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("이미 등록된 도시입니다.");
@@ -204,7 +195,7 @@ describe("CityFormModal - edit mode (F4)", () => {
 
     expect(screen.getByText("[개발] 도시 수정")).toBeInTheDocument();
     expect((screen.getByLabelText(/도시명/) as HTMLInputElement).value).toBe("Seoul");
-    expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("South Korea");
+    expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("대한민국");
     expect(screen.getByRole("button", { name: "저장" })).toBeInTheDocument();
   });
 
@@ -212,7 +203,7 @@ describe("CityFormModal - edit mode (F4)", () => {
     renderWithProviders(<CityFormModal server="dev" open mode="edit" city={seoul} onOpenChange={vi.fn()} />);
 
     expect((screen.getByLabelText(/도시명/) as HTMLInputElement).value).toBe("Seoul");
-    expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("South Korea");
+    expect((screen.getByLabelText(/국가명/) as HTMLInputElement).value).toBe("대한민국");
   });
 
   it("유효한 값으로 수정 제출하면 PUT /api/cities/{id}로 요청하고 모달이 닫힌다", async () => {
@@ -234,11 +225,10 @@ describe("CityFormModal - edit mode (F4)", () => {
 
   it("수정 결과가 다른 도시와 중복되면 요청 없이 폼 상단 배너로 거부 메시지를 표시한다 (F4 엣지케이스)", async () => {
     const fetchMock = stubFetch(() => jsonResponse(200, { status: "success", data: savedCity }));
-    renderEditModalOpened(seoul, vi.fn(), createClientWithCities([seoul, tokyo]));
+    renderEditModalOpened(seoul, vi.fn(), createClientWithCities([seoul, { ...tokyo, country: "일본" }]));
 
     fireEvent.change(screen.getByLabelText(/도시명/), { target: { value: "Tokyo" } });
-    fireEvent.change(screen.getByLabelText(/국가명/), { target: { value: "Japan" } });
-    fireEvent.change(screen.getByLabelText(/국가코드/), { target: { value: "JPN" } });
+    selectCountry("JPN", "일본");
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("이미 등록된 도시입니다.");
