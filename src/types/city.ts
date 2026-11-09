@@ -48,3 +48,34 @@ export type ApiFail = {
 };
 
 export type CityServer = "prod" | "dev";
+
+/** 위치 검색 후보 한 건. Nominatim 응답을 그대로 노출하지 않고 이 필드만 반환한다 */
+export type GeocodeCandidate = {
+  /** Nominatim place_id를 문자열로 바꾼 값(목록 key 용도) */
+  id: string;
+  /** 표시명(accept-language=ko). 같은 표시명이 여러 건일 수 있다 */
+  displayName: string;
+  /** 위도 -90~90 */
+  lat: number;
+  /** 경도 -180~180 */
+  lng: number;
+  /** 행정구역 구분용 보조 텍스트(addressdetails의 state/county 등 조합). 없으면 null */
+  region: string | null;
+  /** jsonv2 type 값(예: city, administrative). 없으면 null */
+  placeType: string | null;
+};
+
+export type GeocodeResponse = ApiSuccess<GeocodeCandidate[]>;
+
+/** 실패 코드. 사유 문자열이 아니라 이 literal로 구분한다 */
+export type GeocodeFailCode =
+  | "INVALID_INPUT"
+  | "RATE_LIMITED"
+  | "DISABLED"
+  | "UPSTREAM_RATE_LIMITED"
+  | "UPSTREAM_ERROR"
+  | "UPSTREAM_TIMEOUT"
+  | "UPSTREAM_BAD_RESPONSE";
+
+/** code가 없는 ApiFail(401 등)도 올 수 있으므로 소비자는 code를 optional로 읽는다 */
+export type GeocodeFail = ApiFail & { code?: GeocodeFailCode };

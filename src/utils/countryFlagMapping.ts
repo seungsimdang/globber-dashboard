@@ -34,6 +34,13 @@ const ALPHA3_TO_ALPHA2: Record<string, string> = {
   ZWE: "ZW",
 };
 
+/** alpha-3 국가코드(대소문자 무관)를 alpha-2로 변환, 매핑에 없으면 undefined */
+export const toAlpha2 = (countryCode: string): string | undefined =>
+  ALPHA3_TO_ALPHA2[countryCode.trim().toUpperCase()];
+
+/** 매핑에 있는 alpha-3 국가코드 전체 목록 */
+export const ALPHA3_CODES = Object.keys(ALPHA3_TO_ALPHA2);
+
 /** 매핑에 없는 국가코드일 때 쓰는 기본 아이콘(흰 깃발) */
 const FALLBACK_FLAG = "🏳️";
 
@@ -41,7 +48,7 @@ const REGIONAL_INDICATOR_A = 0x1f1e6;
 
 /** alpha-3 국가코드(대소문자 무관)를 국기 이모지로 변환, 매핑에 없으면 기본 아이콘 반환 */
 export const getCountryFlag = (countryCode: string): string => {
-  const alpha2 = ALPHA3_TO_ALPHA2[countryCode.trim().toUpperCase()];
+  const alpha2 = toAlpha2(countryCode);
 
   if (!alpha2) return FALLBACK_FLAG;
 
