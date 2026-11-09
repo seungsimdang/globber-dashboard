@@ -18,7 +18,7 @@ const useAssertNotDuplicate = (server: CityServer) => {
 
     if (!cities) return;
 
-    // 수정 시 도시명·국가명이 원본과 같으면 검사 생략
+    // 수정 시 도시명·국가코드가 원본과 같으면 검사 생략
     const original = cities.find((city) => city.id === excludeId);
 
     if (original && findDuplicateCity([original], params)) return;
