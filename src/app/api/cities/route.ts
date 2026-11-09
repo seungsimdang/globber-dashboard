@@ -10,6 +10,10 @@ export const GET = withSession(async () =>
 );
 
 export const POST = withSession(async (request) => {
+  // JSON이 아닌 요청은 본문을 읽기 전에 거절함
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    return failResponse(415, "요청 형식이 올바르지 않습니다.");
+  }
   const body: unknown = await request.json().catch(() => null);
   const parsed = parseCityRequest(body);
   if (!parsed.ok) return failResponse(400, parsed.message);

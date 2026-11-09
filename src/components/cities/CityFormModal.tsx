@@ -12,7 +12,7 @@ import {
   useUpdateCityMutation,
 } from "@/hooks/useCityMutations";
 import type { City } from "@/types/city";
-import { getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
+import { NOT_FOUND_MESSAGE, getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
 
 export type CityFormMode = "create" | "edit";
 
@@ -51,7 +51,6 @@ const toFormValues = (city: City): FormValues => ({
 });
 
 const COUNTRY_CODE_PATTERN = /^[A-Za-z]{3}$/;
-const NOT_FOUND_MESSAGE = "대상을 찾을 수 없습니다.";
 
 /** 필드별 유효성 검사 규칙. 제출 시점에 전체 필드를 한 번에 검사한다. */
 const validate = (values: FormValues): FieldErrors => {

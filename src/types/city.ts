@@ -1,4 +1,4 @@
-// 실제 도시 API 계약(artifacts/task-team/api-spec.md 1절) 기준 타입, 클라이언트와 Route Handler 공용
+// 실제 도시 API 계약을 따르는 공용 타입, 클라이언트와 Route Handler 공용
 
 /** 백엔드 API가 반환하는 단일 도시 데이터 */
 export type CityApiData = {
@@ -9,9 +9,6 @@ export type CityApiData = {
   lng: number;
   countryCode: string;
 };
-
-/** 상류 계약의 CityResponse와 같은 타입 */
-export type CityResponse = CityApiData;
 
 /** 프론트엔드 컴포넌트와 훅에서 쓰는 도시 타입 */
 export type City = {

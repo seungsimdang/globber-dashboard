@@ -36,6 +36,8 @@ const requestToken = async () => {
     const response = await fetch(url, {
       method: "POST",
       cache: "no-store",
+      // 리다이렉트는 따라가지 않고 발급 실패로 처리함
+      redirect: "error",
       signal: AbortSignal.timeout(CITY_API_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error();

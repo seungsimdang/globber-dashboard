@@ -1,6 +1,9 @@
 import { ApiError, DEFAULT_ERROR_MESSAGE } from "@/lib/apiClient";
 
-export type ErrorContext = "list" | "write" | "delete";
+type ErrorContext = "list" | "write" | "delete";
+
+/** 대상 도시를 찾을 수 없을 때 표시하는 문구 */
+export const NOT_FOUND_MESSAGE = "대상을 찾을 수 없습니다.";
 
 type ErrorKind = "network" | "server" | "auth" | "config" | "client";
 

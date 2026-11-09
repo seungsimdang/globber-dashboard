@@ -13,6 +13,10 @@ export const PUT = withSession(async (request: Request, context: Context) => {
   const cityId = await parseCityId(context);
   if (!cityId) return failResponse(400, "올바르지 않은 도시 ID입니다.");
 
+  // JSON이 아닌 요청은 본문을 읽기 전에 거절함
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    return failResponse(415, "요청 형식이 올바르지 않습니다.");
+  }
   const body: unknown = await request.json().catch(() => null);
   const parsed = parseCityRequest(body);
   if (!parsed.ok) return failResponse(400, parsed.message);

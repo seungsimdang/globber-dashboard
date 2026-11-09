@@ -5,9 +5,7 @@ import { Button } from "@/components/common/Button";
 import { useToast } from "@/components/common/Toast";
 import { useDeleteCityMutation } from "@/hooks/useCityMutations";
 import type { City } from "@/types/city";
-import { getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
-
-const NOT_FOUND_MESSAGE = "대상을 찾을 수 없습니다.";
+import { NOT_FOUND_MESSAGE, getErrorMessage, isNotFoundError } from "@/utils/cityErrorMessage";
 
 type DeleteConfirmDialogProps = {
   /** 삭제 대상 도시. null이면 다이얼로그가 닫힌 상태다. */

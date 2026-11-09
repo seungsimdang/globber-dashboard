@@ -95,6 +95,8 @@ export async function proxyCityApi(
       fetch(url, {
         method,
         cache: "no-store",
+        // 리다이렉트는 따라가지 않고 네트워크 오류 경로로 보냄
+        redirect: "error",
         signal: AbortSignal.timeout(CITY_API_TIMEOUT_MS),
         headers: {
           ...(body ? { "Content-Type": "application/json" } : {}),

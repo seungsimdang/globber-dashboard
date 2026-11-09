@@ -1,10 +1,10 @@
 # 도시 API 계약 참조 (실제 Globber API, Swagger 기준)
 
 이 문서는 실제 Globber 백엔드의 OpenAPI(Swagger) 스펙 중 도시 관련 부분을 옮긴 것이다.
-스냅샷 원본은 `artifacts/task-team/openapi-snapshot.json`이며, 이 대시보드는 아래 계약을
+원본은 Swagger(`/v3/api-docs` OpenAPI "GLOBBER")이며, 이 대시보드는 아래 계약을
 Next 서버 경유(`/api/cities*` Route Handler)로 호출한다. 브라우저는 상류 주소를 알지 못한다.
 
-상세 설계와 에러 매핑은 `artifacts/task-team/api-spec.md`를 따른다.
+상세 설계와 에러 매핑은 Swagger 원본(`/v3/api-docs` OpenAPI "GLOBBER")을 기준으로 한다.
 
 ## 응답 래퍼
 
