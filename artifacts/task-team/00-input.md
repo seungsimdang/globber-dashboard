@@ -142,3 +142,52 @@
 ## Bug Team 피드백 반영 필수
 
 없음 (`artifacts/bug-team/`에 postmortem 파일 없음).
+
+# T01 (3차) - 입력 정리: 도시 입력 보조와 건수 줄 문구
+
+## 사용자 요청 원문
+
+> - 운영 서버 전체 4,204개 -> 무슨 서버인지 명시가 필요하니?
+> - 도시 추가 시 도시명/국가명은 알아도 국가코드나 위,경도는 추가하는사람이 모를텐데 어떻게 입력받는것이 좋을까?
+
+## 사용자 결정 (2026-11-09, 질문 창 답변)
+
+| 항목 | 결정 |
+| --- | --- |
+| 건수 줄 | 서버 이름을 뺀다. "전체 N개", "검색 결과 N개 / 전체 N개" (탭과 중복) |
+| 국가 입력 | 국가명을 검색해 고르면 alpha-3 국가코드가 자동 입력되는 선택 방식. 기존 alpha-3 표와 브라우저 `Intl` 사용, 새 라이브러리 없음 |
+| 위경도 입력 | "위치 찾기" 버튼. 도시명+국가로 좌표 후보를 검색해 고르면 위도·경도 자동 입력(이후 수정 가능). OpenStreetMap Nominatim을 Next 서버 경유로 호출 |
+| 진행 | Task Team 사이클. 2차 작업(미커밋)과 같은 브랜치 `feature/real-city-api` 위에서 진행 |
+
+## 확인된 사실 (orchestrator 조회, 2026-11-09)
+
+- 건수 줄 문구는 `src/utils/cityErrorMessage.ts:88-89`에서 `${label} 서버 ...` 형태로 만든다.
+- 모달의 국가코드 입력은 자유 입력(`placeholder="예: KOR"`), 위경도는 숫자 자유 입력이다(`CityFormModal.tsx`). 국가명도 별도 입력칸이 있다.
+- `src/utils/countryFlagMapping.ts`에 ISO 3166-1 alpha-3→alpha-2 전체 표가 있다.
+- 운영 데이터(조회 GET)의 국가는 93개다. `Intl.DisplayNames(['ko'],{type:'region'})` 이름과 비교하면 80개 일치, 11개 불일치(예: KOR 한국/대한민국, AUS 호주/오스트레일리아, HKG 홍콩/홍콩(중국 특별행정구), BIH 띄어쓰기 차이), 2개(`HKR`, `ZYC`)는 ISO alpha-3 표에 없는 코드다. 따라서 `Intl` 이름만 쓰면 기존 데이터의 국가명 표기와 달라진다.
+- Nominatim `search?city=서울&countrycodes=kr&format=jsonv2&accept-language=ko` 1회 호출 → 1건, `37.5666791, 126.9782914`, `addresstype: city`, 표시명 "서울특별시, 대한민국". 무료·키 불필요(일반 지식: 이용 정책상 초당 1회 이하, 식별 가능한 User-Agent 필요, 자동완성 용도 금지).
+
+## 확인 필요
+
+1. 국가 목록의 원천(기존 데이터의 국가코드·국가명 쌍 우선 vs `Intl` 이름)과 비표준 코드 `HKR`·`ZYC` 처리
+2. 국가 선택 시 국가명 입력칸을 자동으로 채울지, 국가명 입력칸을 없앨지
+3. Nominatim 호출 제한·실패 시 동작, 운영 배포 환경에서의 이용 정책 준수 방식
+4. 위치 찾기 결과의 국가가 선택한 국가와 다를 때 처리
+
+## 영향 범위 (현재 코드 기준, 판단 없이 나열)
+
+- `src/utils/cityErrorMessage.ts`, `src/components/cities/CitiesPageContent.tsx`
+- `src/components/cities/CityFormModal.tsx`, `src/components/common/`(선택 목록 컴포넌트 유무), `src/utils/countryFlagMapping.ts`
+- 새 Route Handler(위치 검색 프록시), `src/lib/server/`, `src/services/`, `src/hooks/`, `src/types/city.ts`
+- `.env.example`(필요 시), `src/docs/city-api-reference.md`
+- `tests/` 아래 해당 테스트
+
+## 승인 지점
+
+- T02 완료 후 사용자 확인 게이트
+- 실제 도시 서버에 데이터를 바꾸는 요청은 사용자 승인 없이 보내지 않는다
+- 커밋·푸시는 사용자 승인 후 (2차 구현도 아직 미커밋)
+
+## Bug Team 피드백 반영 필수
+
+없음 (`artifacts/bug-team/`에 postmortem 파일 없음).
