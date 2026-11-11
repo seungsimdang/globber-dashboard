@@ -28,15 +28,18 @@ const commands = (value, label) => {
 
 export function checkPlan(root) {
 	const file = join(root, '.harness/checks.json');
+
 	const hub =
 		existsSync(join(root, 'bin/harness.mjs')) &&
 		existsSync(join(root, 'harness/.harness')) &&
 		!existsSync(join(root, 'package.json'));
 
-	if (hub)
+	if (hub) {
+		const config = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+
 		return {
 			hub: true,
-			identity: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).identity : undefined,
+			identity: config?.identity,
 			tasks: [
 				[
 					process.execPath,
@@ -50,6 +53,7 @@ export function checkPlan(root) {
 				]
 			]
 		};
+	}
 
 	if (!existsSync(file))
 		throw new Error('.harness/checks.json 없음: node .harness/install-checks.mjs 실행 필요');
