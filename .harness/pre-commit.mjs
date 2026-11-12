@@ -27,14 +27,19 @@ const commands = (value, label) => {
 };
 
 export function checkPlan(root) {
+	const file = join(root, '.harness/checks.json');
+
 	const hub =
 		existsSync(join(root, 'bin/harness.mjs')) &&
 		existsSync(join(root, 'harness/.harness')) &&
 		!existsSync(join(root, 'package.json'));
 
-	if (hub)
+	if (hub) {
+		const config = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+
 		return {
 			hub: true,
+			identity: config?.identity,
 			tasks: [
 				[
 					process.execPath,
@@ -48,8 +53,7 @@ export function checkPlan(root) {
 				]
 			]
 		};
-
-	const file = join(root, '.harness/checks.json');
+	}
 
 	if (!existsSync(file))
 		throw new Error('.harness/checks.json 없음: node .harness/install-checks.mjs 실행 필요');
@@ -129,8 +133,26 @@ export function runChecks(root, { ci = false, base, execute = command } = {}) {
 
 	for (const key of Object.keys(plainEnv)) if (key.startsWith('GIT_')) delete plainEnv[key];
 
-	if (plan.identity && !ci) {
-		const { name, email } = plan.identity;
+	const localSetting = key => {
+		const result = spawnSync('git', ['config', '--local', '--get', `harness.${key}`], {
+			cwd: root,
+			env: plainEnv,
+			encoding: 'utf8'
+		});
+
+		if (result.status === 1) return '';
+
+		if (result.status !== 0) throw new Error('로컬 신원 설정 조회 실패');
+
+		return result.stdout.trim();
+	};
+
+	const localName = ci ? '' : localSetting('identityName');
+	const localEmail = ci ? '' : localSetting('identityEmail');
+	const identity = plan.identity ?? (localName || localEmail ? { name: localName, email: localEmail } : null);
+
+	if (identity && !ci) {
+		const { name, email } = identity;
 
 		const identityEnv = {
 			...plainEnv,
@@ -152,7 +174,8 @@ export function runChecks(root, { ci = false, base, execute = command } = {}) {
 		if (
 			read('config', 'user.name') !== name ||
 			read('config', 'user.email') !== email ||
-			!read('var', 'GIT_AUTHOR_IDENT').startsWith(`${name} <${email}> `)
+			!read('var', 'GIT_AUTHOR_IDENT').startsWith(`${name} <${email}> `) ||
+			!read('var', 'GIT_COMMITTER_IDENT').startsWith(`${name} <${email}> `)
 		)
 			throw new Error(`커밋 신원 불일치: ${name} <${email}> 필요`);
 	}

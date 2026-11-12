@@ -121,19 +121,65 @@ test('추가 검사 실패는 lint·타입·하네스 검사보다 먼저 커밋
 		);
 		config(root, { identity: { name: '검사', email: 'check@example.com' } });
 
-		const previous = process.env.GIT_AUTHOR_EMAIL;
+		for (const key of ['GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_EMAIL']) {
+			const previous = process.env[key];
 
-		process.env.GIT_AUTHOR_EMAIL = 'override@example.com';
-		try {
-			assert.throws(
-				() => runChecks(root, { execute: () => assert.fail('검사 실행 금지') }),
-				/신원 불일치/
-			);
-		} finally {
-			if (previous === undefined) delete process.env.GIT_AUTHOR_EMAIL;
-			else process.env.GIT_AUTHOR_EMAIL = previous;
+			process.env[key] = 'override@example.com';
+			try {
+				assert.throws(
+					() => runChecks(root, { execute: () => assert.fail('검사 실행 금지') }),
+					/신원 불일치/
+				);
+			} finally {
+				if (previous === undefined) delete process.env[key];
+				else process.env[key] = previous;
+			}
 		}
 	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('공유 설정이 없어도 저장소 로컬 신원은 작성자와 커미터를 검사', () => {
+	const root = fixture();
+
+	const identityEnv = {
+		GIT_AUTHOR_NAME: '검사',
+		GIT_AUTHOR_EMAIL: 'check@example.com',
+		GIT_COMMITTER_NAME: '검사',
+		GIT_COMMITTER_EMAIL: 'check@example.com'
+	};
+
+	const previousEnv = Object.fromEntries(Object.keys(identityEnv).map(key => [key, process.env[key]]));
+
+	Object.assign(process.env, identityEnv);
+
+	try {
+		config(root);
+		git(root, 'config', '--local', 'harness.identityName', '검사');
+		git(root, 'config', '--local', 'harness.identityEmail', 'check@example.com');
+		assert.doesNotThrow(() => runChecks(root, { execute: () => {} }));
+
+		for (const key of ['GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_EMAIL']) {
+			const previous = process.env[key];
+
+			process.env[key] = 'override@example.com';
+			try {
+				assert.throws(() => runChecks(root, { execute: () => {} }), /신원 불일치/);
+			} finally {
+				if (previous === undefined) delete process.env[key];
+				else process.env[key] = previous;
+			}
+		}
+
+		git(root, 'config', '--local', '--unset', 'harness.identityEmail');
+		assert.throws(() => runChecks(root, { execute: () => {} }), /name·email 필요/);
+	} finally {
+		for (const [key, value] of Object.entries(previousEnv)) {
+			if (value === undefined) delete process.env[key];
+			else process.env[key] = value;
+		}
+
 		rmSync(root, { recursive: true, force: true });
 	}
 });
