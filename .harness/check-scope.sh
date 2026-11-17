@@ -30,7 +30,13 @@ other=$(printf '%s\n' "$classified" | sed -n 's/^P /  /p')
 
 # 동기화 대상을 바꾼 커밋은 Claude·Codex 짝 일치 검사를 통과해야 함
 if [ -f "$root/.harness/spec.test.mjs" ]; then
-  node --test "$root"/.harness/*.test.mjs >/dev/null 2>&1 || {
+  # Git 훅의 인덱스·저장소 환경을 테스트용 저장소에 전달하지 않음
+  node --input-type=module -e '
+    import { spawnSync } from "node:child_process";
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+    const result = spawnSync(process.execPath, ["--test", ...process.argv.slice(1)], { env, stdio: "inherit" });
+    process.exit(result.status ?? 1);
+  ' "$root"/.harness/*.test.mjs || {
     echo "공용 하네스 검사 실패: node --test .harness/*.test.mjs 로 원인을 확인하세요."
     exit 1
   }
