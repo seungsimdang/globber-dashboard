@@ -14,16 +14,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 문서 탐색·에이전트 위임·검증 전 영구 운영 기억인 `docs/agent-rules/usage-budget.md`를 읽고 적용한다. 전체 문맥 상속, 위임 중 메인의 중복 탐색, 문서 재열람, 중복 검증·사전 보고 없는 QA를 피한다.
 
-## Claude-Codex 인계 계약
+## 모델 간 인계 계약 (Claude · Codex · Gemini)
 
-- Claude와 Codex는 각자의 기존 Skill·Agent 흐름으로 작업한다.
+- Claude, Codex, Gemini(Antigravity)는 각자의 기존 Skill·Agent 흐름으로 작업한다. Antigravity는 `AGENTS.md`, `.agents/skills/`, `.agents/hooks.json`, `.agents/agents/{role}.md`를 네이티브로 사용하며, 팀 실행(`task-team`·`bug-team`)은 `.agents/agents/{role}.md`의 `swarm_model`로 `swarm(action: "add")`를 호출하고 `brief`에 `.agents/agents/{role}.md` 필수 읽기 지시를 포함한다(`PreToolUse` 훅이 검증). 단발성 코드베이스 조사는 `invoke_subagent(research)`, 필요 시 네이티브 역할은 `invoke_subagent(TypeName: "<role>")`로도 호출할 수 있다.
 - 모델 또는 세션을 실제로 전환할 때만 `artifacts/work/<work-id>/STATUS.md`와 `HANDOFF.md`를 갱신한다. 대화만으로 다음 모델에 필수 정보를 전달하지 않는다.
 - `task-team`·`bug-team`의 상세 산출물은 유지한다. `HANDOFF.md`에는 해당 파일 경로와 다음 모델이 알아야 할 핵심 결론만 적는다.
 - 인계 문서 작성·검증이 필요하면 `cross-agent-handoff` Skill을 사용한다. 절차는 `docs/agent-contracts/handoff.md`, 경로·필수 항목·보관 규칙은 `artifacts/work/README.md`를 따른다.
 
 ## Task Team 하네스
 
-새 기능 개발, 요구사항 정의, 설계, 구현, 리뷰, QA의 전체 사이클을 처리한다. 진행표는 `.agents/skills/task-team-orchestrator/SKILL.md`, 역할 카드는 `.codex/agents/`의 `project-manager`·`designer`·`frontend-developer`·`backend-developer`·`code-reviewer`·`security-reviewer`·`qa-engineer`(`.toml`), 산출물은 `artifacts/task-team/`이다.
+새 기능 개발, 요구사항 정의, 설계, 구현, 리뷰, QA의 전체 사이클을 처리한다. 진행표는 `.agents/skills/task-team-orchestrator/SKILL.md`, 역할 카드는 `.codex/agents/`(`.toml`)·`.agents/agents/`(`.md`)의 `project-manager`·`designer`·`frontend-developer`·`backend-developer`·`code-reviewer`·`security-reviewer`·`qa-engineer`, 산출물은 `artifacts/task-team/`이다.
 
 아래 요청이 들어오면 `task-team-orchestrator`를 먼저 사용한다.
 
@@ -34,7 +34,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Bug Team 하네스
 
-버그 접수, 분류, 결함 위치 탐지, 코드 수정, 포스트모텀, Task Team 피드백 전달을 처리한다. 진행표는 `.agents/skills/bug-team-orchestrator/SKILL.md`, 역할 카드는 `.codex/agents/`의 `bug-reporter`·`bug-localizer`·`bug-fixer`·`postmortem-agent`(`.toml`), 산출물은 `artifacts/bug-team/`이다.
+버그 접수, 분류, 결함 위치 탐지, 코드 수정, 포스트모텀, Task Team 피드백 전달을 처리한다. 진행표는 `.agents/skills/bug-team-orchestrator/SKILL.md`, 역할 카드는 `.codex/agents/`(`.toml`)·`.agents/agents/`(`.md`)의 `bug-reporter`·`bug-localizer`·`bug-fixer`·`postmortem-agent`, 산출물은 `artifacts/bug-team/`이다.
 
 아래 요청이 들어오면 `bug-team-orchestrator`를 먼저 사용한다.
 

@@ -137,7 +137,8 @@ if blocks >= MAX_BLOCKS:
     sys.exit(0)
 
 # LLM은 미검증 표시를 정직한 보고로 보고 놓칠 수 있어 확인 미룸 표현은 정규식으로 먼저 판정
-# 코드 표기·큰따옴표·인용 줄은 규칙을 설명하는 문장일 수 있어 판정에서 뺌. 재응답은 다음 판정으로 넘김
+# 코드 표기·큰따옴표·인용 줄은 규칙을 설명하는 문장일 수 있어 판정에서 뺌
+# 재응답은 다음 판정으로 넘김
 deferred_mark = mark + "-deferred"
 deferred_text = re.sub(r"`[^`]*`|\"[^\"\n]*\"|“[^”\n]*”|^>.*$", "", answer, flags=re.M)
 # 미룸 문구는 Claude·Codex 판정 훅이 함께 쓰는 파일에서 읽고, 읽지 못하면 이 판정만 건너뜀
@@ -154,8 +155,10 @@ try:
 except Exception:
     deferred_exempt = None
 if deferred_pattern and not os.path.exists(deferred_mark):
-    for sentence in re.split(r"(?<=[.!?])\s+|\n", deferred_text):
-        if deferred_pattern.search(sentence) and not (deferred_exempt and deferred_exempt.search(sentence)):
+    for sentence in re.split(r"(?<=[.!?])\s+|\n|[,;]\s+|\s+(?:다만|하지만|그러나)\s+|(?<=지만)\s+", deferred_text):
+        if deferred_pattern.search(sentence) and not (deferred_exempt and deferred_exempt.search(sentence)) and not re.search(
+            r"(?:권한|접근|인증|연결|서버|기기|계정)[^.!?]{0,24}(?:거부|실패|없어|없었|필요|불가|중단)", sentence
+        ):
             os.makedirs(os.environ["MARK_DIR"], exist_ok=True)
             open(deferred_mark, "w").close()
             print(json.dumps({"decision": "block", "reason": "확인을 미룬 보고가 있습니다: " + sentence.strip()[:120] + " 지금 도구로 확인할 수 있으면 확인한 결과로 다시 보고하세요. 정말 확인할 수 없으면 막힌 이유와 확인 방법을 적으세요."}, ensure_ascii=False))
@@ -209,8 +212,7 @@ except Exception:
     # 판정기 호출이나 응답 해석이 실패하면 작업을 막지 않고 통과
     sys.exit(0)
 
-# 판정기가 사유에 통과라고 적고 ok false를 낸 모순 응답은 차단 사유가 없는 것으로 보고 통과
-if verdict.get("ok") is False and verdict.get("reason") and not re.search(r"통과 대상|통과시킨다|통과한다|차단하지 않", str(verdict["reason"])):
+if isinstance(verdict, dict) and verdict.get("ok") is False and isinstance(verdict.get("reason"), str) and verdict["reason"].strip():
     os.makedirs(os.environ["MARK_DIR"], exist_ok=True)
     with open(mark, "w", encoding="utf-8") as counter:
         counter.write(str(blocks + 1))
