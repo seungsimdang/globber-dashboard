@@ -33,3 +33,4 @@ docs/agent-rules/
 !.claude/rules/tailwind.md
 !.claude/rules/react-query.md
 !.claude/rules/project-structure.md
+!.agents/agents/devops-engineer.md
