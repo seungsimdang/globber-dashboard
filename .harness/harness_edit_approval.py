@@ -133,7 +133,7 @@ def approved_change(entries, root, data, targets):
             elif decision in {"reject", "revoke"}:
                 approved = False
             elif decision is None:
-                # 이후 메시지의 취소 여부를 판정하지 못했으면 실행하지 않는다.
+                # 이후 메시지의 취소 여부를 판정하지 못했으면 실행하지 않음
                 return False
     if not approved or not isinstance(plan, dict):
         return False
