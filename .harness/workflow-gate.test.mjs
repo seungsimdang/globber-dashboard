@@ -27,7 +27,7 @@ function fixture(run) {
   mkdirSync(join(root, '.codex'));
   writeFileSync(join(root, '.harness/fixture.test.mjs'), "import test from 'node:test'; test('검증 입력', () => {});\n");
   writeFileSync(join(root, '.codex/example.py'), '# 실제 변경 입력\n');
-  writeFileSync(join(bin, 'codex'), '#!/usr/bin/env python3\nimport json, os, pathlib, sys\npathlib.Path(sys.argv[sys.argv.index("-o")+1]).write_text(os.environ.get("WORKFLOW_TEST_VERDICT", "{\\\"block\\\": false, \\\"reason\\\": \\\"허용\\\"}"))\n');
+  writeFileSync(join(bin, 'codex'), '#!/usr/bin/env python3\nimport json, os, pathlib, sys\npathlib.Path(sys.argv[sys.argv.index("-o")+1]).write_text(os.environ.get("WORKFLOW_TEST_VERDICT", "{\\"block\\": false, \\"reason\\": \\"허용\\"}"))\n');
   chmodSync(join(bin, 'codex'), 0o755);
   const call = (event, extra = {}, custom = {}) => {
     const result = spawnSync('python3', [hook], { cwd: root, env: { ...env, ...custom }, encoding: 'utf8', input: JSON.stringify({ hook_event_name: event, session_id: 'fixture', cwd: root, ...extra }) });

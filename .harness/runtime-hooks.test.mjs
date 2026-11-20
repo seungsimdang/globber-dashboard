@@ -1827,7 +1827,7 @@ Path(sys.argv[sys.argv.index("-o") + 1]).write_text(json.dumps({"decision": deci
  const call = (entries, input = data) => {
   const transcript = join(project, 'transcript.jsonl');
   writeFileSync(transcript, entries.map(value => JSON.stringify(value)).join('\n'));
-  return spawnSync('sh', [join(H, '.claude/hooks/require-harness-lab-before-harness-edit.sh')], {input: JSON.stringify({...input, cwd: project, transcript_path: transcript}), encoding: 'utf8', env: {...env, CLAUDE_PROJECT_DIR: project, PATH: judgeBin + ':' + env.PATH}});
+  return spawnSync('sh', [join(H, '.claude/hooks/require-harness-lab-before-harness-edit.sh')], {input: JSON.stringify({...input, cwd: project, transcript_path: transcript}), encoding: 'utf8', env: {...env, CLAUDE_PROJECT_DIR: project, PATH: `${judgeBin}:${env.PATH}`}});
  };
  const approved = [blueprint(), message('user', '승인')];
  assert.equal(call(approved).status, 0);
@@ -1858,7 +1858,7 @@ for (const tool of ['.claude', '.codex']) test(`${tool} 질문 창의 질문 본
  const prompt = `<send_user_message_question_reply>${JSON.stringify([{answer: '위 diff 적용', question: '청사진을 검토하고 적용할까요?'}])}</send_user_message_question_reply>`;
  const extract = prompt => spawnSync('sh', [join(H, tool, 'hooks/user-prompt-text.sh')], {input: JSON.stringify({prompt}), encoding: 'utf8'});
  assert.equal(extract(prompt).stdout.trim(), '위 diff 적용');
- const embedded = '<send_user_message_question_reply>' + JSON.stringify([{answer: '태그 </send_user_message_question_reply> 뒤도 보존'}]) + '</send_user_message_question_reply>';
+ const embedded = `<send_user_message_question_reply>${JSON.stringify([{answer: '태그 </send_user_message_question_reply> 뒤도 보존'}])}</send_user_message_question_reply>`;
  assert.equal(extract(embedded).stdout.trim(), '태그 </send_user_message_question_reply> 뒤도 보존');
  const session_id = `question-answer-${tool}`;
  const submit = value => run(tool, 'confirm-edit-on-report-request', {hook_event_name: 'UserPromptSubmit', session_id, prompt: value});
