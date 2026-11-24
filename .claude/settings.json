@@ -3,7 +3,8 @@
     "allow": [
       "Edit(artifacts/bug-team/**)",
       "Edit(artifacts/task-team/**)",
-      "Edit(artifacts/work/**)"
+      "Edit(artifacts/work/**)",
+      "Bash(coderabbit review:*)"
     ],
     "ask": [
       "Edit(/.agents/**)",
@@ -149,6 +150,10 @@
           {
             "type": "command",
             "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-coderabbit-run.sh\""
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-implementer-new-tests.sh\""
           }
         ]
       },
@@ -184,6 +189,20 @@
           {
             "type": "command",
             "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-reask-after-free-text-answer.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-answer-before-edit.sh\"",
+            "timeout": 90
+          },
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-blueprint-before-harness-approval.sh\""
           }
         ]
       }
