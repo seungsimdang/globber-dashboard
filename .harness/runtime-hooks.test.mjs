@@ -2145,3 +2145,51 @@ for (const tool of ['.claude', '.codex']) {
 		});
 	});
 }
+
+for (const tool of ['.claude', '.codex']) {
+	test(`${tool} best practice 판단을 맡긴 턴은 문서 조회 전에 파일 수정을 막는다`, () => {
+		withTmp('source-before-best-practice-', tmp => {
+			const transcript = join(tmp, 'turn.jsonl');
+			const write = (...entries) => writeFileSync(transcript, entries.map(entry => JSON.stringify(entry)).join('\n'));
+			const check = (tool_name = 'Edit', tool_input = { file_path: 'a.ts' }) => {
+				const result = runIn(tool, 'require-source-before-best-practice-edit', { hook_event_name: 'PreToolUse', tool_name, tool_input, transcript_path: transcript }, tmp);
+				assert.equal(result.status, 0, result.stderr);
+				return result.stdout;
+			};
+			const delegate = { type: 'user', message: { content: '키보드 처리는 best practice 판단하여 처리해' } };
+			const lookup = name => ({ type: 'assistant', message: { content: [{ type: 'tool_use', name, input: {} }] } });
+
+			write(delegate);
+			assert.match(check(), /문서 조회가 없습니다/);
+			assert.equal(check('Bash', { command: 'git status --short' }), '');
+			assert.match(check('Bash', { command: 'echo x > a.md' }), /deny/);
+			write(delegate, lookup('Read'));
+			assert.match(check(), /deny/);
+			write(delegate, lookup('WebSearch'));
+			assert.equal(check(), '');
+			write(delegate, lookup('mcp__context7__query-docs'));
+			assert.equal(check(), '');
+			write(delegate, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Agent', input: { subagent_type: 'web-fetch' } }] } });
+			assert.equal(check(), '');
+			write(lookup('WebSearch'), delegate);
+			assert.match(check(), /deny/);
+			write(delegate, lookup('WebSearch'), { type: 'user', message: { content: '이제 이 파일 고쳐' } });
+			assert.equal(check(), '');
+			write({ type: 'user', message: { content: 'best practice가 뭔데?' } });
+			assert.equal(check(), '');
+			write({ type: 'user', message: { content: '이거 고쳐' } }, { type: 'attachment', attachment: { type: 'queued_command', prompt: 'best practice로 알아서 적용해' } });
+			assert.match(check(), /deny/);
+			write({ type: 'user', message: { content: '<pasted_content>best practice 판단</pasted_content> 이거 요약해' } });
+			assert.equal(check(), '');
+			write(
+				{ type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'best practice 판단해서 처리해' }] } },
+				{ type: 'response_item', payload: { type: 'web_search_call' } }
+			);
+			assert.equal(check(), '');
+			write({ type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'best practice 판단해서 처리해' }] } });
+			assert.match(check(), /deny/);
+			writeFileSync(transcript, 'not json');
+			assert.equal(check(), '');
+		});
+	});
+}
