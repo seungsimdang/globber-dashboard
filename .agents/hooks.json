@@ -29,6 +29,10 @@
           {
             "type": "command",
             "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/antigravity-hook-adapter.mjs\" pre-tool-bash block-manual-merge-repo"
+          },
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/antigravity-hook-adapter.mjs\" pre-tool-bash require-source-before-best-practice-edit"
           }
         ]
       },
@@ -46,6 +50,10 @@
           {
             "type": "command",
             "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/antigravity-hook-adapter.mjs\" pre-tool-edit require-coderabbit-run"
+          },
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.agents/hooks/antigravity-hook-adapter.mjs\" pre-tool-edit require-source-before-best-practice-edit"
           }
         ]
       },
