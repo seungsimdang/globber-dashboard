@@ -900,6 +900,65 @@ for (const tool of ['.claude', '.codex']) {
 			rmSync(marks, { recursive: true, force: true });
 		}
 	});
+
+	test(`${tool} 판정 훅이 작업 중 보낸 질문 뒤의 첫 응답을 판정 대상으로 본다`, () => {
+		const marks = mkdtempSync(join(tmpdir(), 'portfolio-feasibility-queued-'));
+		const judgeBin = join(marks, 'judge.sh');
+
+		writeFileSync(judgeBin, `#!/bin/sh\ncat >/dev/null\necho '{"ask": true, "split": false}'\n`);
+		chmodSync(judgeBin, 0o755);
+
+		const confirm = '하네스 커밋은 규칙상 기능 브랜치에서 만들어졌습니다?';
+		const text = (type, value) => ({ type, message: { content: [{ type: 'text', text: value }] } });
+
+		// 작업 중 메시지는 user 항목이 아니라 queued_command 첨부로 기록됨
+		const queued = prompt => ({
+			type: 'attachment',
+			attachment: { type: 'queued_command', prompt, origin: { kind: 'human' } }
+		});
+
+		try {
+			const answer = (queuedPrompt, reply) => {
+				const transcript = join(marks, 'transcript.jsonl');
+
+				const entries = [
+					text('user', '하네스 커밋이 왜 여기 있어'),
+					text('assistant', '커밋이 이 브랜치에 쌓인 이유는 두 가지입니다.'),
+					queued(queuedPrompt),
+					text('assistant', reply)
+				];
+
+				writeFileSync(transcript, entries.map(entry => JSON.stringify(entry)).join('\n'));
+
+				const hook = input =>
+					spawnSync('sh', [resolve(H, tool, 'hooks', 'require-feasibility-verdict.sh')], {
+						input: JSON.stringify({ session_id: 's1', transcript_path: transcript, ...input }),
+						encoding: 'utf8',
+						cwd: H,
+						env: { ...env, TMPDIR: marks, STOP_JUDGE_BIN: judgeBin }
+					});
+
+				hook({ hook_event_name: 'UserPromptSubmit', prompt: confirm });
+
+				const { stdout } = hook({ hook_event_name: 'Stop', last_assistant_message: reply });
+
+				hook({ hook_event_name: 'Stop', last_assistant_message: reply, stop_hook_active: true });
+
+				return stdout;
+			};
+
+			assert.equal(answer(confirm, '아니요. 규칙 때문이 아닙니다.'), '');
+			assert.equal(JSON.parse(answer(confirm, '경위를 설명드리겠습니다.')).decision, 'block');
+			assert.equal(
+				JSON.parse(
+					answer(`<agent-message>${confirm}</agent-message>`, '아니요. 규칙 때문이 아닙니다.')
+				).decision,
+				'block'
+			);
+		} finally {
+			rmSync(marks, { recursive: true, force: true });
+		}
+	});
 }
 
 test('.claude 판정 훅이 확인 미룸을 한 번 막고 질문 창 직접 입력을 판정 대상에 넣는다', () => {
@@ -1259,7 +1318,8 @@ test('재질문 차단이 풀린 상태에서 질문을 다음 메시지로 미�
 	try {
 		const transcript = join(fixture, 'transcript.jsonl');
 
-		const prompt = { type: 'user', message: { content: '다음 메세지?' } };
+		// 질문·답변 요구 턴은 미루기를 허용하므로 차단 사례는 작업 지시 메시지로 확인
+		const prompt = { type: 'user', message: { content: '나머지 결정 진행해' } };
 
 		const peer = {
 			type: 'user',
@@ -1303,6 +1363,24 @@ test('재질문 차단이 풀린 상태에서 질문을 다음 메시지로 미�
 			'block'
 		);
 		assert.equal(decide(`> ${defer}\n\n인용한 문장에 답합니다.`, prompt), 'allow');
+		// 질문이나 답변 요구에 답한 턴은 질문 창을 다음 턴으로 미뤄도 허용
+		assert.equal(decide(defer, { type: 'user', message: { content: '확인하고 다시 답변해' } }), 'allow');
+		// 작업 뒤 결과 보고를 요구하는 지시는 질문이 아니라 미루기를 계속 막음
+		assert.equal(decide(defer, { type: 'user', message: { content: '메모리 업데이트하고 훅으로 강제할 수 있는지 검토 후 보고해' } }), 'block');
+		assert.equal(decide(defer, { type: 'user', message: { content: [{ type: 'text', text: '왜 대답 안하고 질문부터 함?' }] } }), 'allow');
+		// 붙여 넣은 내용 안의 질문은 사용자 질문으로 보지 않음
+		assert.equal(
+			decide(defer, { type: 'user', message: { content: '<pasted_content id="p">왜 그랬나요?</pasted_content id="p">\n메모리 업데이트해' } }),
+			'block'
+		);
+		// 질문 창 답변 시 사용자 질문을 먼저 답하도록 AskUserQuestion도 질문 응답 훅을 거침
+		assert.ok(
+			JSON.parse(readFileSync(resolve(H, '.claude/settings.json'), 'utf8')).hooks.PreToolUse.some(
+				({ matcher, hooks }) =>
+					(matcher ?? '').split('|').includes('AskUserQuestion') &&
+					hooks.some(({ command }) => command.includes('require-answer-before-edit'))
+			)
+		);
 	} finally {
 		rmSync(fixture, { recursive: true, force: true });
 	}
@@ -1594,6 +1672,14 @@ for (const tool of ['.claude', '.codex']) {
 		assert.deepEqual(decide(question, edit, unanswered, []), { result: 'deny', again: 'allow', called: true });
 		assert.deepEqual(decide('D16 답변 기록해', edit, unanswered, []), { result: 'allow', again: 'allow', called: false });
 		assert.equal(decide(question, stop, unanswered, []).result, 'block');
+		// 답변 요구 지시도 판정기에 넘기고, 답 없이 질문 창을 띄우면 막음
+		const ask = { hook_event_name: 'PreToolUse', tool_name: 'AskUserQuestion', tool_input: {} };
+
+		assert.deepEqual(decide('확인하고 다시 답변해', ask, unanswered), { result: 'deny', again: 'allow', called: true });
+		assert.equal(decide('설명해', edit, unanswered).result, 'deny');
+		// 작업 뒤 결과 보고를 요구하는 지시는 판정기를 부르지 않음
+		assert.equal(decide('메모리 업데이트하고 훅으로 강제할 수 있는지 검토 후 보고해', edit, unanswered).called, false);
+		assert.equal(decide('메모리 업데이트해', ask, unanswered).called, false);
 	});
 
 	test(`${tool} 질문 응답 훅이 의문형 메시지만 판정기에 넘기고 작업 알림과 화살표는 무시한다`, () => {
