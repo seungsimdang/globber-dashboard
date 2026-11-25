@@ -7,7 +7,7 @@
 
 input=$(cat)
 
-printf '%s' "$input" | python3 -c '
+printf '%s' "$input" | HOOK_SCRIPT="$0" python3 -c '
 import json, os, re, sys
 
 BASH_WRITE = re.compile(
@@ -22,6 +22,8 @@ except Exception:
 
 if data.get("hook_event_name") != "PreToolUse" or data.get("agent_id"):
     sys.exit(0)
+# 승인 판정기 런타임 판별용(Codex는 이 .claude 사본을 등록함)
+os.environ["HOOK_TRANSCRIPT"] = str(data.get("transcript_path") or "")
 
 root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
 
@@ -80,7 +82,7 @@ if approved_change(entries, root, data, targets):
 
 sys.stderr.write(
     "하네스 파일(" + ", ".join(sorted(set(targets))) + ")을 harness-lab 절차 없이 고치려 함. "
-    "harness-lab 청사진의 전체 경로·before_sha256·edit_sha256을 본문 <harness-plan> 블록이나 계획 파일 참조 <harness-plan-file path=\"절대경로\" sha256=\"파일 해시\"/>로 제시하고 그 청사진 이후 사용자 승인을 받아야 합니다.\n"
+    "harness-lab 청사진의 전체 경로·before_sha256·edit_sha256을 본문 <harness-plan> 블록이나 계획 파일 참조 <harness-plan-file path=\"절대경로\" sha256=\"파일 해시\"/>로 제시하고 그 청사진 이후 사용자 승인을 받아야 합니다. 계획 파일 참조는 편집 승인용이며, 사용자에게는 청사진 전문을 도구 호출 없는 응답 텍스트로 먼저 보여야 합니다.\n"
 )
 sys.exit(2)
 '
