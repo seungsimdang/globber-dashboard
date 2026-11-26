@@ -967,6 +967,8 @@ for (const tool of ['.claude', '.codex']) {
 				).decision,
 				'block'
 			);
+			// 표시만 남고 아직 전달되지 않은 작업 중 질문으로는 막지 않음
+			assert.equal(answer('다른 작업 지시', '경위를 설명드리겠습니다.'), '');
 		} finally {
 			rmSync(marks, { recursive: true, force: true });
 		}
@@ -2091,6 +2093,8 @@ else:
  assert.equal(call(approved, {...data, tool_input: {...data.tool_input, file_path: join(project, '.codex/new.sh')}}).status, 2);
  assert.equal(call([blueprint(), message('user', '<hook_prompt>승인</hook_prompt>')]).status, 2);
  assert.equal(call([...approved, message('user', '승인 취소')]).status, 2);
+ // 승인 뒤 도구 결과(본문 없는 user 항목)가 이어져도 승인 유지
+ assert.equal(call([...approved, {type: 'user', message: {content: [{type: 'tool_result', content: 'ok'}]}}]).status, 0);
  assert.equal(call([...approved, blueprint()]).status, 0);
  assert.equal(call([message('user', `${file} 수정해`)]).status, 2);
  const patch = {...data, tool_name: 'apply_patch', tool_input: {command: '*** Begin Patch\n*** Add File: .codex/new.sh\n+new\n*** End Patch'}};
