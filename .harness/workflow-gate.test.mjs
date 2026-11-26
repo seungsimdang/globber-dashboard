@@ -90,20 +90,34 @@ test('동일 입력이라도 재검증 시작·실패 뒤 이전 통과를 재�
   assert.ok(blocked(tool('collaborationspawn_agent')));
 }));
 
-test('선행 조건·범위 변경 판정은 삭제 외 편집에도 적용하고 진단은 유지', () => fixture(({ call, tool }) => {
+test('의미 판정은 전환·Stop에만 경량 모델(gpt-6-luna, medium)로 호출하고 일반 편집·진단은 생략', () => fixture(({ call, tool, verify, temp }) => {
+  const argsLog = join(temp, 'judge-args.txt');
+  writeFileSync(join(temp, 'bin/codex'), `#!/usr/bin/env python3\nimport os, pathlib, sys\npathlib.Path(${JSON.stringify(argsLog)}).write_text(" ".join(sys.argv[1:]))\npathlib.Path(sys.argv[sys.argv.index("-o")+1]).write_text(os.environ.get("WORKFLOW_TEST_VERDICT", "{\\"block\\": false, \\"reason\\": \\"허용\\"}"))\n`);
+  chmodSync(join(temp, 'bin/codex'), 0o755);
   call('UserPromptSubmit', { prompt: '검증 후 판단해. 대상이나 순서를 임의 변경하지 마.' });
   const verdict = { WORKFLOW_TEST_VERDICT: JSON.stringify({ block: true, reason: '검증 전에 승인 범위를 변경하려 합니다.' }) };
-  for (const name of ['Edit', 'Write', 'apply_patch', 'Delete']) assert.ok(blocked(tool(name, { file_path: '.codex/example.py' }, {}, verdict)), name);
+  for (const name of ['Edit', 'Write', 'apply_patch', 'Delete']) assert.ok(!blocked(tool(name, { file_path: '.codex/example.py' }, {}, verdict)), name);
+  assert.ok(!blocked(tool('Bash', { command: 'node -e "process.exit(0)"' }, {}, verdict)));
   assert.ok(!blocked(tool('Bash', { command: 'rg -n "git commit" .codex' }, {}, verdict)));
-  assert.ok(!blocked(tool('Bash', { command: `python3 '${hook.replaceAll("'", "'\\''")}' verify -- node --test .harness/fixture.test.mjs` }, {}, verdict)));
+  assert.ok(!existsSync(argsLog));
+  assert.equal(verify().status, 0);
+  assert.ok(blocked(tool('collaborationspawn_agent', {}, {}, verdict)));
+  const invoked = readFileSync(argsLog, 'utf8');
+  assert.match(invoked, /-m gpt-6-luna/);
+  assert.match(invoked, /model_reasoning_effort="medium"/);
+  assert.ok(blocked(call('Stop', { last_assistant_message: '작업 완료' }, verdict)));
 }));
 
-test('의미 판정 실패는 진단을 막지 않고 미확인으로 표시', () => fixture(({ call, tool }) => {
+test('의미 판정 실패는 전환·Stop에서 미확인으로 표시하고 기계적 검증 게이트는 유지', () => fixture(({ call, tool, verify }) => {
   call('UserPromptSubmit', { prompt: '승인 범위대로 수정해.' });
-  const result = tool('Edit', { file_path: '.codex/example.py' }, {}, { WORKFLOW_TEST_VERDICT: '잘못된 판정 출력' });
-  assert.ok(!blocked(result));
-  assert.match(result.stderr, /의미 판정은 미확인/);
+  const stopResult = call('Stop', { last_assistant_message: '진행 보고' }, { WORKFLOW_TEST_VERDICT: '잘못된 판정 출력' });
+  assert.ok(!blocked(stopResult));
+  assert.match(stopResult.stderr, /의미 판정은 미확인/);
   assert.ok(blocked(tool('collaborationspawn_agent')));
+  assert.equal(verify().status, 0);
+  const transResult = tool('collaborationspawn_agent', {}, {}, { WORKFLOW_TEST_VERDICT: '잘못된 판정 출력' });
+  assert.ok(!blocked(transResult));
+  assert.match(transResult.stderr, /의미 판정은 미확인/);
 }));
 
 test('사용자 후속·질문 응답을 보존하고 자동 훅 프롬프트를 승인으로 쓰지 않음', () => fixture(({ call, env }) => {
@@ -177,6 +191,6 @@ test('워크플로 검사기의 잘못된 CLI 입력과 판정기 응답을 처�
   call('UserPromptSubmit', { prompt: 'Authorization: Bearer fixture-secret' });
   const state = JSON.parse(readFileSync(join(env.CODEX_WORKFLOW_GATE_DIR, requireStateName(env.CODEX_WORKFLOW_GATE_DIR)), 'utf8'));
   assert.doesNotMatch(state.prompts[0], /fixture-secret/);
-  const missing = tool('Edit', { file_path: '.codex/example.py' }, {}, { WORKFLOW_TEST_VERDICT: 'null' });
+  const missing = call('Stop', { last_assistant_message: '보고' }, { WORKFLOW_TEST_VERDICT: 'null' });
   assert.match(missing.stderr, /의미 판정은 미확인/);
 }));
